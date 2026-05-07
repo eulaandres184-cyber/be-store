@@ -2,95 +2,58 @@
 
 namespace App\Livewire\Productos;
 
+use Livewire\Component;
+use Livewire\WithPagination;
 use App\Models\Producto;
 use App\Models\Categoria;
-use Illuminate\Support\Facades\Auth;
-use Livewire\Component;
-use Livewire\Attributes\Computed;
-use Livewire\WithPagination;
 
 class ListaProductos extends Component
 {
     use WithPagination;
 
-    public string $busqueda = '';
+    public string $busqueda        = '';
     public string $categoriaFiltro = '';
-    public string $ordenar = 'nombre';
-    public string $estado = 'activos';
+    public string $estadoFiltro    = 'activos';
+    public string $ordenar         = 'nombre';
+    public bool   $escaneando      = false;
 
-    protected $queryString = ['busqueda', 'categoriaFiltro', 'ordenar', 'estado'];
-    protected $paginationTheme = 'bootstrap';
+    protected $queryString = ['busqueda', 'categoriaFiltro', 'estadoFiltro'];
 
-    #[Computed]
-    public function productos()
+    public function updatingBusqueda()  { $this->resetPage(); }
+    public function updatingCategoria() { $this->resetPage(); }
+
+    public function getCategoriasProperty()
     {
-        return Producto::where('comercio_id', $this->comercioId())
-            ->when(
-                $this->busqueda,
-                fn($q) =>
-                $q->where('nombre', 'like', "%{$this->busqueda}%")
-                    ->orWhere('descripcion', 'like', "%{$this->busqueda}%")
-            )
-            ->when(
-                $this->categoriaFiltro,
-                fn($q) =>
-                $q->where('categoria_id', $this->categoriaFiltro)
-            )
-            ->when(
-                $this->estado === 'activos',
-                fn($q) =>
-                $q->where('activo', true)
-            )
-            ->when(
-                $this->estado === 'inactivos',
-                fn($q) =>
-                $q->where('activo', false)
-            )
-            ->with('categoria')
-            ->orderBy($this->ordenar)
-            ->paginate(20);
+        return Categoria::where('comercio_id', 1)->where('activo', true)->orderBy('orden')->get();
     }
 
-    #[Computed]
-    public function categorias()
+    public function eliminar(int $id): void
     {
-        return Categoria::where('comercio_id', $this->comercioId())
-            ->where('activo', true)
-            ->orderBy('nombre')
-            ->get();
+        $producto = Producto::findOrFail($id);
+        $producto->update(['activo' => false]);
+        session()->flash('success', "Producto '{$producto->nombre}' desactivado.");
     }
 
-    public function updatingBusqueda(): void
+    public function activar(int $id): void
     {
-        $this->resetPage();
-    }
-
-    public function updatingCategoriaFiltro(): void
-    {
-        $this->resetPage();
-    }
-
-    public function updatingEstado(): void
-    {
-        $this->resetPage();
-    }
-
-    public function toggleActivo(int $productoId): void
-    {
-        $producto = Producto::find($productoId);
-        if ($producto && $producto->comercio_id === $this->comercioId()) {
-            $producto->update(['activo' => !$producto->activo]);
-        }
-    }
-
-    private function comercioId(): int
-    {
-        return Auth::user()?->comercio_id ?? 1;
+        $producto = Producto::findOrFail($id);
+        $producto->update(['activo' => true]);
+        session()->flash('success', "Producto '{$producto->nombre}' activado.");
     }
 
     public function render()
     {
-        return view('livewire.productos.lista-productos')
+        $productos = Producto::where('comercio_id', 1)
+            ->when($this->busqueda, fn($q) => $q->buscar($this->busqueda))
+            ->when($this->categoriaFiltro, fn($q) => $q->where('categoria_id', $this->categoriaFiltro))
+            ->when($this->estadoFiltro === 'activos',   fn($q) => $q->where('activo', true))
+            ->when($this->estadoFiltro === 'inactivos', fn($q) => $q->where('activo', false))
+            ->when($this->estadoFiltro === 'bajo_stock',fn($q) => $q->bajoMinimo()->where('activo', true))
+            ->with('categoria')
+            ->orderBy($this->ordenar)
+            ->paginate(20);
+
+        return view('livewire.productos.lista-productos', compact('productos'))
             ->layout('layouts.app', ['title' => 'Productos']);
     }
 }
