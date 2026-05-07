@@ -1,58 +1,50 @@
-<x-layouts.app title="Productos">
-<x-slot name="estilos">@vite(['resources/css/productos.css'])</x-slot>
-<x-slot name="scripts">@vite(['resources/js/productos.js'])</x-slot>
-
-@if(session('success'))
-    <div class="bs-alert-success">✅ {{ session('success') }}</div>
-@endif
-@if(session('warning'))
-    <div class="bs-alert-warning">⚠️ {{ session('warning') }}</div>
-@endif
+@push('estilos')@vite(['resources/css/productos.css'])@endpush
+@push('scripts')@vite(['resources/js/productos.js'])@endpush
+<div>
+@if(session('success'))<div class="bs-alert-success">✅ {{ session('success') }}</div>@endif
+@if(session('warning'))<div class="bs-alert-warning">⚠️ {{ session('warning') }}</div>@endif
 
 <div class="bs-page-title">
     <span>📦 Productos</span>
     <a href="{{ route('productos.nuevo') }}" class="bs-btn-black">+ Nuevo producto</a>
 </div>
 
-{{-- Filtros --}}
 <div class="productos-filtros">
-    <input
-        class="bs-input"
-        wire:model.live.debounce.300ms="busqueda"
-        placeholder="Buscar por nombre, código interno o código de barras..."
-    />
+    <input class="bs-input" wire:model.live.debounce.300ms="busqueda" placeholder="Buscar por nombre, código o barras..."/>
     <select class="bs-select" wire:model.live="categoriaFiltro">
         <option value="">Todas las categorías</option>
         @foreach($this->categorias as $cat)
             <option value="{{ $cat->id }}">{{ $cat->nombre }}</option>
         @endforeach
     </select>
-    <select class="bs-select" wire:model.live="ordenar" style="width:auto;min-width:130px">
-        <option value="nombre">Nombre A-Z</option>
-        <option value="precio_efectivo">Precio</option>
-        <option value="stock_actual">Stock</option>
-        <option value="created_at">Más nuevos</option>
-    </select>
 </div>
 
-{{-- Tabs de estado --}}
 <div class="estado-tabs">
-    <div class="estado-tab {{ $estadoFiltro === 'todos' ? 'activo' : '' }}" wire:click="$set('estadoFiltro','todos')">Todos</div>
-    <div class="estado-tab {{ $estadoFiltro === 'activos' ? 'activo' : '' }}" wire:click="$set('estadoFiltro','activos')">Activos</div>
-    <div class="estado-tab {{ $estadoFiltro === 'bajo_stock' ? 'activo' : '' }}" wire:click="$set('estadoFiltro','bajo_stock')">⚠️ Bajo stock</div>
-    <div class="estado-tab {{ $estadoFiltro === 'inactivos' ? 'activo' : '' }}" wire:click="$set('estadoFiltro','inactivos')">Inactivos</div>
+    <div class="estado-tab {{ $estadoFiltro==='todos'      ?'activo':'' }}" wire:click="$set('estadoFiltro','todos')">Todos</div>
+    <div class="estado-tab {{ $estadoFiltro==='activos'    ?'activo':'' }}" wire:click="$set('estadoFiltro','activos')">Activos</div>
+    <div class="estado-tab {{ $estadoFiltro==='bajo_stock' ?'activo':'' }}" wire:click="$set('estadoFiltro','bajo_stock')">⚠️ Bajo stock</div>
+    <div class="estado-tab {{ $estadoFiltro==='inactivos'  ?'activo':'' }}" wire:click="$set('estadoFiltro','inactivos')">Inactivos</div>
 </div>
 
-{{-- Tabla --}}
 <div class="bs-card" style="padding:0;overflow:hidden">
     <table class="bs-table">
         <thead>
             <tr>
-                <th>Código</th>
-                <th>Nombre</th>
-                <th>Categoría</th>
-                <th>Precio efectivo</th>
-                <th>Stock</th>
+                <th class="th-sort" wire:click="ordenar('codigo_interno')">
+                    Código @if($ordenarPor==='codigo_interno'){{ $direccion==='asc'?'↑':'↓' }}@else<span class="th-icon">↕</span>@endif
+                </th>
+                <th class="th-sort" wire:click="ordenar('nombre')">
+                    Nombre @if($ordenarPor==='nombre'){{ $direccion==='asc'?'↑':'↓' }}@else<span class="th-icon">↕</span>@endif
+                </th>
+                <th class="th-sort" wire:click="ordenar('categoria_id')">
+                    Categoría @if($ordenarPor==='categoria_id'){{ $direccion==='asc'?'↑':'↓' }}@else<span class="th-icon">↕</span>@endif
+                </th>
+                <th class="th-sort" wire:click="ordenar('precio_efectivo')">
+                    Precio @if($ordenarPor==='precio_efectivo'){{ $direccion==='asc'?'↑':'↓' }}@else<span class="th-icon">↕</span>@endif
+                </th>
+                <th class="th-sort" wire:click="ordenar('stock_actual')">
+                    Stock @if($ordenarPor==='stock_actual'){{ $direccion==='asc'?'↑':'↓' }}@else<span class="th-icon">↕</span>@endif
+                </th>
                 <th>Estado</th>
                 <th></th>
             </tr>
@@ -70,7 +62,7 @@
             </td>
             <td style="font-weight:500">{{ $producto->nombre }}</td>
             <td>{{ $producto->categoria->nombre ?? '—' }}</td>
-            <td style="font-weight:600;color:var(--bs-blue)">${{ number_format($producto->precio_efectivo, 0, ',', '.') }} {{ $producto->moneda }}</td>
+            <td style="font-weight:600;color:var(--bs-blue)">${{ number_format($producto->precio_efectivo,0,',','.') }} <small>{{ $producto->moneda }}</small></td>
             <td>
                 @if($producto->stock_actual == 0)
                     <span class="stock-zero">Sin stock</span>
@@ -81,11 +73,7 @@
                 @endif
             </td>
             <td>
-                @if($producto->activo)
-                    <span class="bs-badge-green">Activo</span>
-                @else
-                    <span class="bs-badge-red">Inactivo</span>
-                @endif
+                <span class="bs-badge-{{ $producto->activo ? 'green' : 'red' }}">{{ $producto->activo ? 'Activo' : 'Inactivo' }}</span>
             </td>
             <td>
                 <div class="tbl-actions">
@@ -99,19 +87,10 @@
             </td>
         </tr>
         @empty
-        <tr>
-            <td colspan="7" style="text-align:center;padding:2rem;color:var(--bs-muted)">
-                No se encontraron productos
-            </td>
-        </tr>
+        <tr><td colspan="7" style="text-align:center;padding:2rem;color:var(--bs-muted)">No se encontraron productos</td></tr>
         @endforelse
         </tbody>
     </table>
 </div>
-
-{{-- Paginación --}}
-<div style="margin-top:.75rem">
-    {{ $productos->links() }}
+<div style="margin-top:.75rem">{{ $productos->links() }}</div>
 </div>
-
-</x-layouts.app>
