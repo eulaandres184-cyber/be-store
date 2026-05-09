@@ -5,12 +5,12 @@ export default defineConfig({
     plugins: [
         laravel({
             input: [
-                // CSS
                 'resources/css/app.css',
                 'resources/css/pos.css',
-                // JS
+                'resources/css/productos.css',
                 'resources/js/app.js',
                 'resources/js/pos.js',
+                'resources/js/productos.js',
             ],
             refresh: true,
         }),

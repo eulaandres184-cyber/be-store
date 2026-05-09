@@ -42,6 +42,7 @@
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     {{ $estilos ?? '' }}
     @livewireStyles
+    @stack('estilos')
 </head>
 <body>
 
@@ -98,6 +99,7 @@
     </a>
 </nav>
 
+@stack('scripts')
 @livewireScripts
 {{ $scripts ?? '' }}
 </body>

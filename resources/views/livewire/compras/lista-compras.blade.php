@@ -1,83 +1,41 @@
-<div class="bs-panel">
-    <header class="bs-panel-header">
-        <h1>Compras</h1>
-        <p>Gestiona tus compras a proveedores.</p>
-        <a href="{{ route('compras.nueva') }}" class="bs-btn-primary" style="margin-top:.5rem">+ Nueva compra</a>
-    </header>
+@push('estilos')@vite(['resources/css/productos.css'])@endpush
+<div>
+@if(session('success'))<div class="bs-alert-success">✅ {{ session('success') }}</div>@endif
 
-    <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem; margin-bottom:1rem">
-        <div class="bs-metric">
-            <div class="bs-metric-label">Total general</div>
-            <div class="bs-metric-value">${{ number_format($totalCompras, 0, ',', '.') }}</div>
-        </div>
-        <div class="bs-metric">
-            <div class="bs-metric-label">Compras hoy</div>
-            <div class="bs-metric-value">${{ number_format($comprasHoy, 0, ',', '.') }}</div>
-        </div>
-    </div>
+<div class="bs-page-title">
+    <span>🛒 Compras</span>
+    <a href="{{ route('compras.nueva') }}" class="bs-btn-black">+ Nueva compra</a>
+</div>
 
-    <div class="bs-form-row" style="display:grid; grid-template-columns:1fr 1fr 1fr 1fr auto; gap:.75rem; margin-bottom:1rem">
-        <input type="date" class="bs-input" wire:model.live="desde" />
-        <input type="date" class="bs-input" wire:model.live="hasta" />
-        
-        <select class="bs-select" wire:model.live="proveedorFiltro">
-            <option value="">Todos los proveedores</option>
-            @foreach($this->proveedores as $prov)
-                <option value="{{ $prov->id }}">{{ $prov->nombre }}</option>
-            @endforeach
-        </select>
+<div class="productos-filtros">
+    <input class="bs-input" wire:model.live.debounce.300ms="busqueda" placeholder="Buscar por proveedor..."/>
+</div>
 
-        <select class="bs-select" wire:model.live="ordenar">
-            <option value="fecha_desc">Más recientes</option>
-            <option value="fecha_asc">Más antiguos</option>
-            <option value="monto_desc">Mayor monto</option>
-        </select>
-
-        <button wire:click="limpiarFiltros" class="bs-btn-outline">Limpiar</button>
-    </div>
-
-    @if($this->compras->isEmpty())
-        <div style="text-align:center; padding:2rem; color:#94A3B8">
-            <div style="font-size:2rem;margin-bottom:.5rem">📋</div>
-            <p>No se encontraron compras</p>
-        </div>
-    @else
-        <div style="overflow-x:auto">
-            <table class="bs-table">
-                <thead>
-                    <tr>
-                        <th>#ID</th>
-                        <th>Fecha</th>
-                        <th>Proveedor</th>
-                        <th>Ítems</th>
-                        <th>Subtotal</th>
-                        <th>Total</th>
-                        <th>Acciones</th>
-                    </tr>
-                </thead>
-                <tbody>
-                @foreach($this->compras as $compra)
-                <tr>
-                    <td><strong>#{{ $compra->id }}</strong></td>
-                    <td>
-                        <div>{{ $compra->fecha->format('d/m/Y') }}</div>
-                        <div style="font-size:.8rem;color:#94A3B8">{{ $compra->fecha->format('H:i') }}</div>
-                    </td>
-                    <td>{{ $compra->proveedor->nombre ?? '—' }}</td>
-                    <td>{{ $compra->items->count() }} ítem(s)</td>
-                    <td>${{ number_format($compra->total_ars, 0, ',', '.') }}</td>
-                    <td><strong style="color:#1E6FBB">${{ number_format($compra->total_ars, 0, ',', '.') }}</strong></td>
-                    <td>
-                        <button class="bs-btn-small" onclick="alert('Ver detalle compra #{{ $compra->id }}')">Ver</button>
-                    </td>
-                </tr>
-                @endforeach
-                </tbody>
-            </table>
-        </div>
-
-        <div style="margin-top:1rem">
-            {{ $this->compras->links() }}
-        </div>
-    @endif
+<div class="bs-card" style="padding:0;overflow:hidden">
+    <table class="bs-table">
+        <thead>
+            <tr>
+                <th class="th-sort" wire:click="ordenar('fecha')">Fecha @if($ordenarPor==='fecha'){{ $direccion==='asc'?'↑':'↓' }}@else<span class="th-icon">↕</span>@endif</th>
+                <th>Proveedor</th>
+                <th class="th-sort" wire:click="ordenar('total_ars')">Total @if($ordenarPor==='total_ars'){{ $direccion==='asc'?'↑':'↓' }}@else<span class="th-icon">↕</span>@endif</th>
+                <th>Ítems</th>
+                <th>Notas</th>
+            </tr>
+        </thead>
+        <tbody>
+        @forelse($compras as $compra)
+        <tr wire:key="compra-{{ $compra->id }}">
+            <td>{{ $compra->fecha->format('d/m/Y') }}</td>
+            <td style="font-weight:500">{{ $compra->proveedor->nombre ?? '—' }}</td>
+            <td style="font-weight:700;color:var(--bs-blue)">${{ number_format($compra->total_ars,0,',','.') }}</td>
+            <td>{{ $compra->items->count() }} producto(s)</td>
+            <td style="font-size:.78rem;color:var(--bs-muted)">{{ $compra->notas ?? '—' }}</td>
+        </tr>
+        @empty
+        <tr><td colspan="5" style="text-align:center;padding:2rem;color:var(--bs-muted)">No hay compras registradas</td></tr>
+        @endforelse
+        </tbody>
+    </table>
+</div>
+<div style="margin-top:.75rem">{{ $compras->links() }}</div>
 </div>

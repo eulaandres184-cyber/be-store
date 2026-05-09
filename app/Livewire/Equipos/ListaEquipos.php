@@ -2,89 +2,58 @@
 
 namespace App\Livewire\Equipos;
 
-use App\Models\EquipoDetalle;
-use App\Models\ModeloCelular;
-use Illuminate\Support\Facades\Auth;
 use Livewire\Component;
-use Livewire\Attributes\Computed;
 use Livewire\WithPagination;
+use App\Models\EquipoDetalle;
+use App\Models\Configuracion;
 
 class ListaEquipos extends Component
 {
     use WithPagination;
 
-    public string $busqueda = '';
-    public string $modeloFiltro = '';
+    public string $busqueda    = '';
     public string $estadoFiltro = 'disponible';
+    public string $marcaFiltro  = '';
+    public string $ordenarPor   = 'created_at';
+    public string $direccion    = 'desc';
 
-    protected $queryString = ['busqueda', 'modeloFiltro', 'estadoFiltro'];
-    protected $paginationTheme = 'bootstrap';
-
-    #[Computed]
-    public function equipos()
+    public function ordenar(string $columna): void
     {
-        return EquipoDetalle::when(
-            $this->busqueda,
-            fn($q) =>
-            $q->where('imei', 'like', "%{$this->busqueda}%")
-        )
-            ->when(
-                $this->modeloFiltro,
-                fn($q) =>
-                $q->whereHas(
-                    'producto',
-                    fn($subQ) =>
-                    $subQ->where('modelo_celular_id', $this->modeloFiltro)
-                )
-            )
-            ->when(
-                $this->estadoFiltro,
-                fn($q) =>
-                $q->where('estado', $this->estadoFiltro)
-            )
-            ->whereHas(
-                'producto',
-                fn($q) =>
-                $q->where('comercio_id', $this->comercioId())
-            )
-            ->with(['producto' => fn($q) => $q->with('modeloCelular')])
-            ->latest()
-            ->paginate(20);
-    }
-
-    #[Computed]
-    public function modelos()
-    {
-        return ModeloCelular::where('comercio_id', $this->comercioId())
-            ->where('activo', true)
-            ->orderBy('marca')
-            ->orderBy('modelo')
-            ->get();
-    }
-
-    public function updatingBusqueda(): void
-    {
+        if ($this->ordenarPor === $columna) {
+            $this->direccion = $this->direccion === 'asc' ? 'desc' : 'asc';
+        } else {
+            $this->ordenarPor = $columna;
+            $this->direccion  = 'asc';
+        }
         $this->resetPage();
     }
 
-    public function updatingModeloFiltro(): void
+    public function getMarcasProperty()
     {
-        $this->resetPage();
+        return EquipoDetalle::select('marca')->distinct()->orderBy('marca')->pluck('marca');
     }
 
-    private function comercioId(): int
+    public function getDolarProperty()
     {
-        return Auth::user()?->comercio_id ?? 1;
+        return Configuracion::where('comercio_id', 1)->value('dolar_blue_hoy') ?? 0;
     }
 
     public function render()
     {
-        $equiposDisponibles = EquipoDetalle::where('estado', 'disponible')
-            ->whereHas('producto', fn($q) => $q->where('comercio_id', $this->comercioId()))
-            ->count();
+        $equipos = EquipoDetalle::with('producto')
+            ->whereHas('producto', fn($q) => $q->where('comercio_id', 1))
+            ->when($this->busqueda, fn($q) => $q->where(function($q) {
+                $q->where('marca',  'like', "%{$this->busqueda}%")
+                  ->orWhere('modelo', 'like', "%{$this->busqueda}%")
+                  ->orWhere('imei',   'like', "%{$this->busqueda}%")
+                  ->orWhere('color',  'like', "%{$this->busqueda}%");
+            }))
+            ->when($this->estadoFiltro, fn($q) => $q->where('estado', $this->estadoFiltro))
+            ->when($this->marcaFiltro,  fn($q) => $q->where('marca',  $this->marcaFiltro))
+            ->orderBy($this->ordenarPor, $this->direccion)
+            ->paginate(20);
 
-        return view('livewire.equipos.lista-equipos', [
-            'equiposDisponibles' => $equiposDisponibles,
-        ])->layout('layouts.app', ['title' => 'Equipos']);
+        return view('livewire.equipos.lista-equipos', compact('equipos'))
+            ->layout('layouts.app', ['title' => 'Equipos']);
     }
 }
