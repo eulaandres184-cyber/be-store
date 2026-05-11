@@ -154,3 +154,32 @@
 .venta-exitosa h3    { font-size: 1.15rem; font-weight: 700; color: var(--bs-success-text); margin-bottom: .5rem; }
 .venta-exitosa-monto { font-size: 1.6rem; font-weight: 700; color: var(--bs-blue); margin: .5rem 0 1rem; }
 .venta-exitosa-btns  { display: flex; gap: .75rem; justify-content: center; flex-wrap: wrap; }
+
+/* Tabs de categorías en el POS */
+.cat-tab {
+    padding: .3rem .75rem;
+    border-radius: 20px;
+    font-size: .75rem;
+    font-weight: 500;
+    cursor: pointer;
+    border: 1.5px solid var(--bs-gray-border);
+    background: var(--bs-white);
+    color: var(--bs-muted);
+    transition: var(--bs-transition);
+    white-space: nowrap;
+    user-select: none;
+}
+.cat-tab:hover  { border-color: var(--bs-blue); color: var(--bs-blue); }
+.cat-tab.active { background: var(--bs-black); color: var(--bs-white); border-color: var(--bs-black); }
+
+/* Responsive móvil — stack vertical */
+@media(max-width: 768px) {
+    .pos-wrap { grid-template-columns: 1fr; }
+    .cart-panel { position: static; max-height: none; }
+    .cart-body  { max-height: 180px; }
+    .prod-grid  { grid-template-columns: repeat(auto-fill, minmax(120px,1fr)); }
+    .prod-card  { padding: .55rem; }
+    .prod-card-nombre { font-size: .75rem; }
+    .prod-card-precio { font-size: .85rem; }
+    .pay-grid   { grid-template-columns: 1fr 1fr; }
+}

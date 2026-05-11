@@ -1,104 +1,65 @@
-<div class="bs-panel">
-    <header class="bs-panel-header">
-        <h1>Reportes</h1>
-        <p>Análisis y métricas del negocio.</p>
-    </header>
-
-    <div class="bs-form-row" style="margin-bottom:1rem">
-        <label>Período:</label>
-        <select class="bs-select" wire:model.live="periodo" style="max-width:180px">
-            <option value="7">Últimos 7 días</option>
-            <option value="30">Últimos 30 días</option>
-            <option value="90">Últimos 90 días</option>
-            <option value="365">Este año</option>
-        </select>
+@push('estilos')@vite(['resources/css/productos.css'])@endpush
+<div>
+<div class="bs-page-title">
+    <span>📊 Reportes</span>
+    <div style="display:flex;gap:.5rem">
+        <div class="estado-tab {{ $periodo==='7dias'  ?'activo':'' }}" wire:click="$set('periodo','7dias')">7 días</div>
+        <div class="estado-tab {{ $periodo==='30dias' ?'activo':'' }}" wire:click="$set('periodo','30dias')">30 días</div>
+        <div class="estado-tab {{ $periodo==='mes'    ?'activo':'' }}" wire:click="$set('periodo','mes')">Este mes</div>
     </div>
+</div>
 
-    {{-- KPIs principales --}}
-    <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:1rem; margin-bottom:1.5rem">
-        <div class="bs-metric">
-            <div class="bs-metric-label">Ventas</div>
-            <div class="bs-metric-value" style="color:#1E6FBB">${{ number_format($ventasPeriodo, 0, ',', '.') }}</div>
-        </div>
-        <div class="bs-metric">
-            <div class="bs-metric-label">Compras</div>
-            <div class="bs-metric-value" style="color:#EF4444">${{ number_format($comprasPeriodo, 0, ',', '.') }}</div>
-        </div>
-        <div class="bs-metric">
-            <div class="bs-metric-label">Ganancia</div>
-            <div class="bs-metric-value" style="color:{{ $ganancia >= 0 ? '#166534' : '#EF4444' }}">
-                @if($ganancia >= 0) + @endif
-                ${{ number_format($ganancia, 0, ',', '.') }}
+<div class="bs-metrics">
+    <div class="bs-metric"><div class="bs-metric-label">Total vendido</div><div class="bs-metric-value">${{ number_format($this->ventasTotal,0,',','.') }}</div></div>
+    <div class="bs-metric" style="border-left-color:#1E8449"><div class="bs-metric-label">Transacciones</div><div class="bs-metric-value" style="color:#1E8449">{{ $this->cantVentas }}</div></div>
+    <div class="bs-metric" style="border-left-color:#7D3C98"><div class="bs-metric-label">Ticket promedio</div><div class="bs-metric-value" style="color:#7D3C98">${{ number_format($this->ticketPromedio,0,',','.') }}</div></div>
+    <div class="bs-metric" style="border-left-color:#C0392B"><div class="bs-metric-label">Total compras</div><div class="bs-metric-value" style="color:#C0392B">${{ number_format($this->comprasTotal,0,',','.') }}</div></div>
+</div>
+
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem">
+    <div class="bs-card">
+        <div class="bs-card-title">Ventas por medio de pago</div>
+        @forelse($this->ventasPorMedioPago as $mp)
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:.4rem 0;border-bottom:1px solid #F1F5F9;font-size:.82rem">
+            <span>{{ ucfirst(str_replace('_',' ',$mp->medio_pago)) }}</span>
+            <div style="text-align:right">
+                <div style="font-weight:700;color:var(--bs-blue)">${{ number_format($mp->total,0,',','.') }}</div>
+                <div style="font-size:.7rem;color:var(--bs-muted)">{{ $mp->cantidad }} venta(s)</div>
             </div>
         </div>
+        @empty
+        <p style="color:var(--bs-muted);font-size:.82rem">Sin ventas en el período</p>
+        @endforelse
     </div>
 
-    <div style="display:grid; grid-template-columns:1fr 1fr; gap:1.5rem">
-        {{-- Productos más vendidos --}}
-        <div class="bs-card">
-            <div class="bs-card-title">Productos más vendidos</div>
-            @if($productosMasVendidos->isEmpty())
-                <div style="padding:1rem; text-align:center; color:#94A3B8; font-size:.85rem">
-                    Sin datos para este período
-                </div>
-            @else
-                <table class="bs-table" style="font-size:.85rem">
-                    <thead>
-                        <tr>
-                            <th>Producto</th>
-                            <th style="text-align:right">Cantidad</th>
-                            <th style="text-align:right">Monto</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                    @foreach($productosMasVendidos as $prod)
-                    <tr>
-                        <td><strong>{{ $prod['nombre'] }}</strong></td>
-                        <td style="text-align:right">{{ $prod['cantidad'] }}</td>
-                        <td style="text-align:right; color:#1E6FBB">${{ number_format($prod['monto'], 0, ',', '.') }}</td>
-                    </tr>
-                    @endforeach
-                    </tbody>
-                </table>
-            @endif
+    <div class="bs-card">
+        <div class="bs-card-title">Ventas por categoría</div>
+        @forelse($this->ventasPorCategoria as $cat)
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:.4rem 0;border-bottom:1px solid #F1F5F9;font-size:.82rem">
+            <span>{{ $cat->categoria }}</span>
+            <span style="font-weight:700;color:var(--bs-blue)">${{ number_format($cat->total,0,',','.') }}</span>
         </div>
-
-        {{-- Ventas por medio de pago --}}
-        <div class="bs-card">
-            <div class="bs-card-title">Ventas por medio de pago</div>
-            @if($ventasPorMedio->isEmpty())
-                <div style="padding:1rem; text-align:center; color:#94A3B8; font-size:.85rem">
-                    Sin datos para este período
-                </div>
-            @else
-                <table class="bs-table" style="font-size:.85rem">
-                    <thead>
-                        <tr>
-                            <th>Medio</th>
-                            <th style="text-align:right">Transacciones</th>
-                            <th style="text-align:right">Monto</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                    @php
-                        $medioPagoLabels = [
-                            'efectivo' => 'Efectivo',
-                            'transferencia' => 'Transferencia',
-                            'tarjeta' => 'Tarjeta',
-                            'cuotas_4' => '4 cuotas',
-                            'cuotas_20' => '20 cuotas',
-                        ];
-                    @endphp
-                    @foreach($ventasPorMedio as $vpm)
-                    <tr>
-                        <td><strong>{{ $medioPagoLabels[$vpm->medio_pago] ?? $vpm->medio_pago }}</strong></td>
-                        <td style="text-align:right">{{ $vpm->cantidad }}</td>
-                        <td style="text-align:right; color:#1E6FBB">${{ number_format($vpm->total, 0, ',', '.') }}</td>
-                    </tr>
-                    @endforeach
-                    </tbody>
-                </table>
-            @endif
-        </div>
+        @empty
+        <p style="color:var(--bs-muted);font-size:.82rem">Sin ventas en el período</p>
+        @endforelse
     </div>
+</div>
+
+<div class="bs-card">
+    <div class="bs-card-title">Productos más vendidos</div>
+    <table class="bs-table">
+        <thead><tr><th>Producto</th><th>Unidades</th><th>Total ARS</th></tr></thead>
+        <tbody>
+        @forelse($this->productosMasVendidos as $item)
+        <tr>
+            <td>{{ $item->producto?->nombre ?? '—' }}</td>
+            <td style="font-weight:600">{{ $item->total_vendido }}</td>
+            <td style="color:var(--bs-blue);font-weight:700">${{ number_format($item->total_ars,0,',','.') }}</td>
+        </tr>
+        @empty
+        <tr><td colspan="3" style="text-align:center;color:var(--bs-muted);padding:1.5rem">Sin ventas en el período</td></tr>
+        @endforelse
+        </tbody>
+    </table>
+</div>
 </div>
