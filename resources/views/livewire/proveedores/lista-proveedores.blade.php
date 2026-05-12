@@ -1,72 +1,95 @@
-<div class="bs-panel">
-    <header class="bs-panel-header">
-        <h1>Proveedores</h1>
-        <p>Gestiona tus contactos de proveedores para compras.</p>
-    </header>
+@push('estilos')@vite(['resources/css/productos.css'])@endpush
+<div>
+@if(session('success'))<div class="bs-alert-success">✅ {{ session('success') }}</div>@endif
 
-    <div class="bs-form-row" style="display:grid; grid-template-columns:1fr 1fr; gap:.75rem; margin-bottom:1rem">
-        <input type="text" class="bs-input" wire:model.live.debounce.300ms="busqueda" placeholder="Buscar por nombre o contacto..." />
-        
-        <select class="bs-select" wire:model.live="estado">
-            <option value="">Todos</option>
-            <option value="activos">Activos</option>
-            <option value="inactivos">Inactivos</option>
-        </select>
-    </div>
-
-    @if($this->proveedores->isEmpty())
-        <div style="text-align:center; padding:2rem; color:#94A3B8">
-            <div style="font-size:2rem;margin-bottom:.5rem">🏭</div>
-            <p>No se encontraron proveedores</p>
-        </div>
-    @else
-        <table class="bs-table">
-            <thead>
-                <tr>
-                    <th>Nombre</th>
-                    <th>Contacto</th>
-                    <th>WhatsApp</th>
-                    <th>Estado</th>
-                    <th>Acciones</th>
-                </tr>
-            </thead>
-            <tbody>
-            @foreach($this->proveedores as $proveedor)
-            <tr>
-                <td>
-                    <strong>{{ $proveedor->nombre }}</strong>
-                    @if($proveedor->notas)
-                        <div style="font-size:.8rem;color:#94A3B8">{{ substr($proveedor->notas, 0, 40) }}...</div>
-                    @endif
-                </td>
-                <td>{{ $proveedor->contacto ?? '—' }}</td>
-                <td>
-                    @if($proveedor->whatsapp)
-                        <a href="https://wa.me/{{ str_replace(' ', '', $proveedor->whatsapp) }}" target="_blank" class="bs-btn-small" style="font-size:.8rem">{{ $proveedor->whatsapp }}</a>
-                    @else
-                        —
-                    @endif
-                </td>
-                <td>
-                    <span class="bs-badge-{{ $proveedor->activo ? 'green' : 'gray' }}">
-                        {{ $proveedor->activo ? 'Activo' : 'Inactivo' }}
-                    </span>
-                </td>
-                <td>
-                    <div style="display:flex; gap:.5rem">
-                        <button class="bs-btn-small" onclick="alert('Editar proveedor #{{ $proveedor->id }}')">Editar</button>
-                        <button wire:click="toggleActivo({{ $proveedor->id }})" class="bs-btn-small bs-btn-outline">
-                            {{ $proveedor->activo ? 'Desactivar' : 'Activar' }}
-                        </button>
-                    </div>
-                </td>
-            </tr>
-            @endforeach
-            </tbody>
-        </table>
-
-        <div style="margin-top:1rem">
-            {{ $this->proveedores->links() }}
-        </div>
+<div class="bs-page-title">
+    <span>🚚 Proveedores</span>
+    @if(!$mostrarForm)
+    <button wire:click="nuevo" class="bs-btn-black">+ Nuevo proveedor</button>
     @endif
+</div>
+
+@if($mostrarForm)
+<div class="form-section" style="max-width:600px;margin-bottom:1rem">
+    <div class="form-section-title">{{ $modoEdicion?'✏️ Editar proveedor':'➕ Nuevo proveedor' }}</div>
+    <div class="bs-form-group">
+        <label class="bs-label">Nombre *</label>
+        <input class="bs-input" wire:model="nombre" placeholder="Nombre del proveedor o empresa"/>
+        @error('nombre')<span style="font-size:.75rem;color:var(--bs-danger-text)">{{ $message }}</span>@enderror
+    </div>
+    <div class="bs-form-row">
+        <div class="bs-form-group">
+            <label class="bs-label">Contacto</label>
+            <input class="bs-input" wire:model="contacto" placeholder="Nombre del contacto"/>
+        </div>
+        <div class="bs-form-group">
+            <label class="bs-label">WhatsApp</label>
+            <input class="bs-input" wire:model="whatsapp" placeholder="Ej: 351 555 0101"/>
+        </div>
+    </div>
+    <div class="bs-form-group">
+        <label class="bs-label">Notas</label>
+        <textarea class="bs-input" wire:model="notas" rows="2" placeholder="Condiciones, días de entrega, etc."></textarea>
+    </div>
+    <div class="bs-form-group" style="display:flex;align-items:center;gap:.5rem">
+        <input type="checkbox" wire:model="activo" id="activo" style="width:16px;height:16px;accent-color:var(--bs-blue)">
+        <label for="activo" class="bs-label" style="margin:0;cursor:pointer">Proveedor activo</label>
+    </div>
+    <div style="display:flex;gap:.5rem">
+        <button wire:click="guardar" wire:loading.attr="disabled" class="bs-btn-black">
+            <span wire:loading.remove>{{ $modoEdicion?'💾 Guardar':'✅ Crear proveedor' }}</span>
+            <span wire:loading>Guardando...</span>
+        </button>
+        <button wire:click="cancelar" class="bs-btn-secondary">Cancelar</button>
+    </div>
+</div>
+@endif
+
+<div class="productos-filtros">
+    <input class="bs-input" wire:model.live.debounce.300ms="busqueda" placeholder="Buscar proveedor..."/>
+</div>
+
+<div class="bs-card" style="padding:0;overflow:hidden">
+    <table class="bs-table">
+        <thead>
+            <tr>
+                <th class="th-sort" wire:click="ordenar('nombre')">Nombre @if($ordenarPor==='nombre'){{ $direccion==='asc'?'↑':'↓' }}@else<span class="th-icon">↕</span>@endif</th>
+                <th>Contacto</th>
+                <th>WhatsApp</th>
+                <th>Compras</th>
+                <th>Estado</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+        @forelse($proveedores as $p)
+        <tr wire:key="prov-{{ $p->id }}">
+            <td style="font-weight:600">{{ $p->nombre }}</td>
+            <td>{{ $p->contacto ?? '—' }}</td>
+            <td>
+                @if($p->whatsapp)
+                <a href="https://wa.me/54{{ preg_replace('/\D/','',$p->whatsapp) }}" target="_blank" style="color:var(--bs-success-text)">
+                    📱 {{ $p->whatsapp }}
+                </a>
+                @else —
+                @endif
+            </td>
+            <td><span class="bs-badge-blue">{{ $p->compras_count }}</span></td>
+            <td><span class="bs-badge-{{ $p->activo?'green':'red' }}">{{ $p->activo?'Activo':'Inactivo' }}</span></td>
+            <td>
+                <div class="tbl-actions">
+                    <button wire:click="editar({{ $p->id }})" class="btn-edit">Editar</button>
+                    <button wire:click="toggleActivo({{ $p->id }})" class="btn-edit">
+                        {{ $p->activo?'Desactivar':'Activar' }}
+                    </button>
+                </div>
+            </td>
+        </tr>
+        @empty
+        <tr><td colspan="6" style="text-align:center;padding:2rem;color:var(--bs-muted)">No hay proveedores</td></tr>
+        @endforelse
+        </tbody>
+    </table>
+</div>
+<div style="margin-top:.75rem">{{ $proveedores->links() }}</div>
 </div>

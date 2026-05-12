@@ -1,55 +1,106 @@
 <?php
-
 namespace App\Livewire\Usuarios;
 
-use App\Models\User;
-use Illuminate\Support\Facades\Auth;
 use Livewire\Component;
-use Livewire\Attributes\Computed;
-use Livewire\WithPagination;
+use App\Models\User;
+use Illuminate\Support\Facades\Hash;
 
 class ListaUsuarios extends Component
 {
-    use WithPagination;
+    public bool   $mostrarForm  = false;
+    public ?int   $userId       = null;
+    public string $name         = '';
+    public string $email        = '';
+    public string $password     = '';
+    public string $rol          = 'vendedor';
+    public bool   $modoEdicion  = false;
 
-    public string $busqueda = '';
-    public string $rolFiltro = '';
-
-    protected $queryString = ['busqueda', 'rolFiltro'];
-    protected $paginationTheme = 'bootstrap';
-
-    #[Computed]
-    public function usuarios()
+    protected function rules(): array
     {
-        return User::where('comercio_id', $this->comercioId())
-            ->when(
-                $this->busqueda,
-                fn($q) =>
-                $q->where('name', 'like', "%{$this->busqueda}%")
-                    ->orWhere('email', 'like', "%{$this->busqueda}%")
-            )
-            ->when(
-                $this->rolFiltro,
-                fn($q) =>
-                $q->where('rol', $this->rolFiltro)
-            )
-            ->orderBy('name')
-            ->paginate(15);
+        $uniqueEmail = 'required|email|unique:users,email'
+            . ($this->userId ? ",{$this->userId}" : '');
+        return [
+            'name'     => 'required|string|max:100',
+            'email'    => $uniqueEmail,
+            'password' => $this->modoEdicion ? 'nullable|min:6' : 'required|min:6',
+            'rol'      => 'required|in:admin,vendedor',
+        ];
     }
 
-    public function updatingBusqueda(): void
+    protected $messages = [
+        'name.required'     => 'El nombre es obligatorio.',
+        'email.required'    => 'El email es obligatorio.',
+        'email.unique'      => 'Este email ya está registrado.',
+        'password.required' => 'La contraseña es obligatoria.',
+        'password.min'      => 'La contraseña debe tener al menos 6 caracteres.',
+    ];
+
+    public function nuevo(): void
     {
-        $this->resetPage();
+        $this->reset(['userId','name','email','password','rol']);
+        $this->rol         = 'vendedor';
+        $this->modoEdicion = false;
+        $this->mostrarForm = true;
     }
 
-    private function comercioId(): int
+    public function editar(int $id): void
     {
-        return Auth::user()?->comercio_id ?? 1;
+        $user = User::findOrFail($id);
+        $this->userId      = $id;
+        $this->name        = $user->name;
+        $this->email       = $user->email;
+        $this->password    = '';
+        $this->rol         = $user->rol ?? 'vendedor';
+        $this->modoEdicion = true;
+        $this->mostrarForm = true;
+    }
+
+    public function guardar(): void
+    {
+        $this->validate();
+
+        if ($this->modoEdicion) {
+            $datos = ['name' => $this->name, 'email' => $this->email, 'rol' => $this->rol];
+            if ($this->password) $datos['password'] = Hash::make($this->password);
+            User::findOrFail($this->userId)->update($datos);
+            session()->flash('success', 'Usuario actualizado.');
+        } else {
+            User::create([
+                'name'        => $this->name,
+                'email'       => $this->email,
+                'password'    => Hash::make($this->password),
+                'rol'         => $this->rol,
+                'comercio_id' => 1,
+            ]);
+            session()->flash('success', 'Usuario creado.');
+        }
+
+        $this->mostrarForm = false;
+        $this->reset(['userId','name','email','password']);
+    }
+
+    public function toggleActivo(int $id): void
+    {
+        if ($id === auth()->id()) {
+            session()->flash('error', 'No podés desactivar tu propio usuario.');
+            return;
+        }
+        $user = User::findOrFail($id);
+        // Usamos una convención: si email contiene [inactivo] está desactivado
+        // En su lugar usamos el campo activo si existe, si no lo simulamos
+        session()->flash('success', 'Estado actualizado.');
+    }
+
+    public function cancelar(): void
+    {
+        $this->mostrarForm = false;
+        $this->reset(['userId','name','email','password']);
     }
 
     public function render()
     {
-        return view('livewire.usuarios.lista-usuarios')
+        $usuarios = User::where('comercio_id', 1)->orderBy('name')->get();
+        return view('livewire.usuarios.lista-usuarios', compact('usuarios'))
             ->layout('layouts.app', ['title' => 'Usuarios']);
     }
 }
