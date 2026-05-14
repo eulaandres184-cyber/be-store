@@ -8,6 +8,7 @@ export default defineConfig({
                 'resources/css/app.css',
                 'resources/css/pos.css',
                 'resources/css/productos.css',
+                'resources/css/documentos.css',
                 'resources/js/app.js',
                 'resources/js/pos.js',
                 'resources/js/productos.js',

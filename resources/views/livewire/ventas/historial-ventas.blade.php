@@ -63,6 +63,7 @@
             <td style="font-weight:700;color:var(--bs-blue)">${{ number_format($venta->total_ars,0,',','.') }}</td>
             <td>
                 <button wire:click="verDetalle({{ $venta->id }})" class="btn-edit">Ver</button>
+                    <a href="{{ route('documentos.emitir', $venta->id) }}" class="btn-edit">📄 Emitir</a>
             </td>
         </tr>
         @empty

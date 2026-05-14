@@ -45,3 +45,17 @@ Route::middleware(['auth'])->group(function () {
 });
 
 require __DIR__.'/auth.php';
+
+// ── Documentos ────────────────────────────────────────────
+use App\Livewire\Documentos\EmitirDocumento;
+use App\Livewire\Documentos\ListaDocumentos;
+use App\Livewire\Documentos\Presupuesto;
+use App\Http\Controllers\DocumentoController;
+
+Route::middleware(['auth'])->group(function () {
+    Route::get('/documentos',                   ListaDocumentos::class)->name('documentos');
+    Route::get('/documentos/presupuesto',        Presupuesto::class)->name('documentos.presupuesto');
+    Route::get('/documentos/emitir/{ventaId}',   EmitirDocumento::class)->name('documentos.emitir');
+    Route::get('/documentos/{id}/ver',           [DocumentoController::class, 'ver'])->name('documentos.ver');
+    Route::get('/documentos/{id}/whatsapp',      [DocumentoController::class, 'whatsapp'])->name('documentos.whatsapp');
+});

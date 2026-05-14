@@ -1,0 +1,66 @@
+/* ============================================================
+   BE Store — Documentos (ticket, factura, recibo, presupuesto)
+   Los estilos @print son los que determinan el aspecto impreso.
+   ============================================================ */
+
+/* ── Selector de tipo de documento ── */
+.doc-tipo-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: .6rem; margin-bottom: 1rem; }
+.doc-tipo-card { border: 2px solid var(--bs-gray-border); border-radius: var(--bs-radius-lg); padding: 1rem .75rem; text-align: center; cursor: pointer; transition: var(--bs-transition); background: var(--bs-white); }
+.doc-tipo-card:hover { border-color: var(--bs-blue); background: var(--bs-blue-light); }
+.doc-tipo-card.selected { border-color: var(--bs-black); background: var(--bs-black); color: var(--bs-white); }
+.doc-tipo-card .doc-tipo-icon { font-size: 1.8rem; margin-bottom: .4rem; }
+.doc-tipo-card .doc-tipo-label { font-size: .82rem; font-weight: 600; }
+.doc-tipo-card .doc-tipo-sub { font-size: .68rem; color: var(--bs-muted); }
+.doc-tipo-card.selected .doc-tipo-sub { color: #aaa; }
+
+/* ── Vista previa del documento ── */
+.doc-preview { background: #fff; border: 1px solid var(--bs-gray-border); border-radius: var(--bs-radius-lg); padding: 0; overflow: hidden; box-shadow: var(--bs-shadow-md); max-width: 680px; margin: 0 auto; }
+.doc-header { padding: 1.5rem; border-bottom: 3px solid var(--bs-dark); }
+.doc-emisor-nombre { font-size: 1.4rem; font-weight: 700; color: var(--bs-dark); }
+.doc-emisor-datos { font-size: .78rem; color: var(--bs-muted); margin-top: .2rem; }
+.doc-tipo-badge { display: inline-block; background: var(--bs-dark); color: #fff; padding: .25rem .75rem; border-radius: 4px; font-size: .82rem; font-weight: 600; margin-top: .5rem; }
+.doc-numero { font-size: .82rem; color: var(--bs-muted); margin-top: .2rem; }
+.doc-fecha { font-size: .78rem; color: var(--bs-muted); }
+
+.doc-no-valido { text-align: center; padding: .3rem; background: #FFF0F0; border: 1px dashed #C0392B; border-radius: 4px; font-size: .72rem; color: #C0392B; font-weight: 500; margin-top: .5rem; letter-spacing: .05em; }
+
+.doc-cliente-box { padding: 1rem 1.5rem; background: var(--bs-gray-bg); border-bottom: 1px solid var(--bs-gray-border); font-size: .82rem; }
+.doc-cliente-titulo { font-size: .7rem; text-transform: uppercase; letter-spacing: .05em; color: var(--bs-muted); margin-bottom: .2rem; }
+.doc-cliente-nombre { font-weight: 600; color: var(--bs-dark); }
+
+.doc-items { padding: 1rem 1.5rem; }
+.doc-items-tabla { width: 100%; border-collapse: collapse; font-size: .82rem; }
+.doc-items-tabla th { border-bottom: 2px solid var(--bs-dark); padding: .4rem .5rem; text-align: left; color: var(--bs-dark); font-weight: 600; }
+.doc-items-tabla td { padding: .4rem .5rem; border-bottom: 1px solid #EEF2F5; color: var(--bs-text); }
+.doc-items-tabla .text-right { text-align: right; }
+.doc-items-tabla tr:last-child td { border: none; }
+
+.doc-totales { padding: 1rem 1.5rem; border-top: 1px solid var(--bs-gray-border); background: var(--bs-gray-bg); }
+.doc-total-row { display: flex; justify-content: space-between; font-size: .82rem; color: var(--bs-muted); margin-bottom: .3rem; }
+.doc-total-final { display: flex; justify-content: space-between; font-size: 1.2rem; font-weight: 700; color: var(--bs-dark); border-top: 2px solid var(--bs-dark); padding-top: .5rem; margin-top: .3rem; }
+
+.doc-pagos { padding: 1rem 1.5rem; border-top: 1px solid var(--bs-gray-border); }
+.doc-pagos-titulo { font-size: .72rem; text-transform: uppercase; letter-spacing: .05em; color: var(--bs-muted); margin-bottom: .5rem; }
+.doc-pago-row { display: flex; justify-content: space-between; font-size: .82rem; padding: .3rem 0; border-bottom: 1px solid #EEF2F5; }
+
+.doc-saldo { padding: .75rem 1.5rem; background: #FFF8E6; border-top: 1px solid #F5CBA7; display: flex; justify-content: space-between; font-size: .9rem; font-weight: 600; color: #9A6B00; }
+
+.doc-footer { padding: .75rem 1.5rem; border-top: 1px solid var(--bs-gray-border); text-align: center; font-size: .72rem; color: var(--bs-muted); }
+.doc-dolar { font-size: .7rem; color: var(--bs-muted); text-align: right; padding: .4rem 1.5rem; }
+
+/* ── Botones de acción del documento ── */
+.doc-acciones { display: flex; gap: .75rem; justify-content: center; padding: 1rem; flex-wrap: wrap; }
+
+/* ── Estilos de impresión ── */
+@media print {
+    body * { visibility: hidden; }
+    .doc-preview, .doc-preview * { visibility: visible; }
+    .doc-preview { position: absolute; left: 0; top: 0; width: 100%; border: none; box-shadow: none; border-radius: 0; }
+    .doc-acciones { display: none !important; }
+    .bs-topbar, .bs-mobile-nav { display: none !important; }
+
+    /* Ticket: ancho de papel térmico 80mm */
+    .print-ticket .doc-preview { max-width: 302px; font-size: 11px; }
+    .print-ticket .doc-emisor-nombre { font-size: 1rem; }
+    .print-ticket .doc-total-final { font-size: 1rem; }
+}
