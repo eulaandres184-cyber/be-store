@@ -3,6 +3,8 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 
 class Cliente extends Model
+    protected $table = 'clientes';
+    protected $table = 'clientes';
 {
     protected $fillable = [
         'comercio_id','nombre','telefono','email','dni','notas','activo'

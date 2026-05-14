@@ -7,275 +7,254 @@ use App\Models\Producto;
 use App\Models\Categoria;
 
 /**
- * Comando: SincronizarProductosSheets
+ * Comando: bestore:sync-sheets
  *
  * Sincroniza productos y precios desde Google Sheets una vez por semana.
- * Lee cada hoja del spreadsheet y actualiza/crea productos en la BD.
  *
- * Uso manual: php artisan bestore:sync-sheets
- * Automático: todos los lunes a las 8:00 AM (configurado en console.php)
+ * La planilla de BE Store tiene la siguiente estructura por hoja:
+ *   - Columna A: Nombre del producto (TIPO)
+ *   - Columna B: Precio en efectivo (EFECTIVO)
+ *   - Columna C: Precio con tarjeta (TARJETA) — se ignora, se calcula
+ *   - Fila 2: Encabezados
+ *   - Fila 3 en adelante: Datos
  *
- * La planilla debe estar publicada como pública (solo lectura).
- * Sheet ID: 1TAW1iHp6SSRsnZfTzWrWCN7nZCZeSklUeDyx6JnP2KA
+ * Algunas hojas tienen DOS bloques de datos (col A-C y col E-G)
+ * como Fundas y Templados que están en la misma hoja.
+ *
+ * Uso:
+ *   php artisan bestore:sync-sheets           → sincroniza real
+ *   php artisan bestore:sync-sheets --dry-run → simula sin guardar
  */
 class SincronizarProductosSheets extends Command
 {
-    protected $signature   = 'bestore:sync-sheets {--dry-run : Simular sin guardar}';
-    protected $description = 'Sincroniza productos desde Google Sheets (semanal)';
+    protected $signature   = 'bestore:sync-sheets {--dry-run : Simular sin guardar cambios}';
+    protected $description = 'Sincroniza productos desde Google Sheets (semanal - lunes 8AM)';
 
-    /** ID del spreadsheet de Google Sheets */
+    /** ID del Google Spreadsheet de BE Store */
     const SHEET_ID = '1TAW1iHp6SSRsnZfTzWrWCN7nZCZeSklUeDyx6JnP2KA';
 
     /**
-     * Mapeo de nombre de hoja → nombre de categoría en la BD.
-     * La clave es el nombre exacto de la pestaña en Google Sheets.
+     * Configuración de cada hoja:
+     * 'gid'        → ID de la pestaña (de la URL de Google Sheets)
+     * 'categoria'  → nombre de la categoría en la BD
+     * 'col_nombre' → índice de columna del nombre (0=A, 1=B, 4=E...)
+     * 'col_precio' → índice de columna del precio efectivo
+     * 'bloque2'    → si tiene un segundo bloque de datos en la misma hoja
      */
     const HOJAS = [
-        'Fundas y Templados' => 'Fundas',
-        'Templados'          => 'Templados',
-        'Adaptadores'        => 'Adaptadores',
-        'Cables'             => 'Cables',
-        'Cargadores'         => 'Cargadores',
-        'Auriculares'        => 'Auriculares',
-        'AirPods'            => 'AirPods',
-        'Celulares'          => 'Celulares',
-        'iPhones'            => 'iPhones',
-        'Usados'             => 'Usados',
-        'Xiaomi'             => 'Xiaomi',
-        'Parlantes'          => 'Parlantes',
-        'Relojes'            => 'Relojes',
-        'Soportes'           => 'Soportes',
-        'Luces'              => 'Luces',
-        'Accesorios'         => 'Accesorios varios',
-        'Inflables'          => 'Inflables',
+        [
+            'nombre'     => 'Fundas y Templados',
+            'gid'        => '1169561459',
+            'categoria'  => 'Fundas',
+            'col_nombre' => 0,  // columna A
+            'col_precio' => 1,  // columna B
+            'bloque2'    => [
+                'categoria'  => 'Templados',
+                'col_nombre' => 4,  // columna E
+                'col_precio' => 5,  // columna F
+            ],
+        ],
+        ['nombre' => 'ADAPTADORES',          'gid' => '1350975065', 'categoria' => 'Adaptadores',      'col_nombre' => 0, 'col_precio' => 1],
+        ['nombre' => 'CABLES',               'gid' => '1764110107', 'categoria' => 'Cables',           'col_nombre' => 0, 'col_precio' => 1],
+        ['nombre' => 'CARGADORES COMPLETOS', 'gid' => '434900350',  'categoria' => 'Cargadores',       'col_nombre' => 0, 'col_precio' => 1],
+        ['nombre' => 'AURICULARES',          'gid' => '1403895346', 'categoria' => 'Auriculares',      'col_nombre' => 0, 'col_precio' => 1],
+        ['nombre' => 'AIRPODS ORIG',         'gid' => '1012691532', 'categoria' => 'AirPods',          'col_nombre' => 0, 'col_precio' => 1],
+        ['nombre' => 'CELULARES',            'gid' => '1881782097', 'categoria' => 'Celulares',        'col_nombre' => 0, 'col_precio' => 1],
+        ['nombre' => "IPHONE's",             'gid' => '1421289057', 'categoria' => 'iPhones',          'col_nombre' => 0, 'col_precio' => 1],
+        ['nombre' => 'USADOS',               'gid' => '1058732665', 'categoria' => 'Usados',           'col_nombre' => 0, 'col_precio' => 1],
+        ['nombre' => 'XIAOMI',               'gid' => '1664588590', 'categoria' => 'Xiaomi',           'col_nombre' => 0, 'col_precio' => 1],
+        ['nombre' => 'PARLANTES',            'gid' => '1916611371', 'categoria' => 'Parlantes',        'col_nombre' => 0, 'col_precio' => 1],
+        ['nombre' => 'RELOJES',              'gid' => '1524369639', 'categoria' => 'Relojes',          'col_nombre' => 0, 'col_precio' => 1],
+        ['nombre' => 'SOPORTES',             'gid' => '1961428801', 'categoria' => 'Soportes',        'col_nombre' => 0, 'col_precio' => 1],
+        ['nombre' => 'LUCES',                'gid' => '1284282165', 'categoria' => 'Luces',            'col_nombre' => 0, 'col_precio' => 1],
+        ['nombre' => 'ACCESORIOS',           'gid' => '2070323337', 'categoria' => 'Accesorios varios','col_nombre' => 0, 'col_precio' => 1],
+        ['nombre' => 'INFLABLES',            'gid' => '1895611375', 'categoria' => 'Inflables',        'col_nombre' => 0, 'col_precio' => 1],
     ];
 
-    /** IDs de cada hoja (gid). Se obtienen de la URL al hacer clic en cada pestaña */
-    const GIDS = [
-        'Fundas y Templados' => '1169561459',
-        'Adaptadores'        => '0',
-        'Cables'             => '1',
-        'Cargadores'         => '2',
-        'Auriculares'        => '3',
-        'AirPods'            => '4',
-        'Celulares'          => '5',
-        'iPhones'            => '6',
-        'Usados'             => '7',
-        'Xiaomi'             => '8',
-        'Parlantes'          => '9',
-        'Relojes'            => '10',
-        'Soportes'           => '11',
-        'Luces'              => '12',
-        'Accesorios'         => '13',
-        'Inflables'          => '14',
-    ];
-
-    private int $creados     = 0;
-    private int $actualizados = 0;
-    private int $errores     = 0;
-    private bool $dryRun     = false;
+    private int  $creados      = 0;
+    private int  $actualizados = 0;
+    private int  $saltados     = 0;
+    private int  $errores      = 0;
+    private bool $dryRun       = false;
 
     public function handle(): int
     {
         $this->dryRun = $this->option('dry-run');
-        $this->info('=== Sincronización Google Sheets → BE Store ===');
+        $inicio = now();
+
+        $this->info('');
+        $this->info('╔══════════════════════════════════════════╗');
+        $this->info('║   BE Store — Sync Google Sheets          ║');
+        $this->info('╚══════════════════════════════════════════╝');
+        $this->info("Iniciado: {$inicio->format('d/m/Y H:i:s')}");
 
         if ($this->dryRun) {
-            $this->warn('MODO DRY-RUN: no se guardarán cambios.');
-        }
-
-        foreach (self::HOJAS as $nombreHoja => $nombreCategoria) {
-            $this->procesarHoja($nombreHoja, $nombreCategoria);
+            $this->warn('⚠ MODO DRY-RUN: no se guardarán cambios en la BD.');
         }
 
         $this->newLine();
-        $this->info("✅ Sincronización completa:");
-        $this->info("   Creados:      {$this->creados}");
-        $this->info("   Actualizados: {$this->actualizados}");
-        $this->error("   Errores:      {$this->errores}");
+
+        foreach (self::HOJAS as $hoja) {
+            $this->procesarHoja($hoja);
+
+            // Si tiene segundo bloque, procesarlo también
+            if (isset($hoja['bloque2'])) {
+                $this->procesarHoja(array_merge($hoja, $hoja['bloque2'], ['bloque2' => null]));
+            }
+        }
+
+        $this->newLine();
+        $this->info('══════════════════════════════════════════');
+        $this->info("✅ Sincronización finalizada en " . now()->diffInSeconds($inicio) . "s");
+        $this->info("   ➕ Creados:      {$this->creados}");
+        $this->info("   ↑  Actualizados: {$this->actualizados}");
+        $this->info("   ⏭  Saltados:     {$this->saltados}");
+
+        if ($this->errores > 0) {
+            $this->warn("   ❌ Errores:      {$this->errores}");
+        }
 
         return self::SUCCESS;
     }
 
     /**
-     * Procesa una hoja del spreadsheet y sincroniza sus productos.
-     *
-     * @param string $nombreHoja      Nombre de la pestaña en Google Sheets
-     * @param string $nombreCategoria Nombre de la categoría en la BD
+     * Descarga y procesa una hoja del spreadsheet.
+     * Filtra filas vacías, sin precio o con precio cero.
      */
-    private function procesarHoja(string $nombreHoja, string $nombreCategoria): void
+    private function procesarHoja(array $config): void
     {
-        $this->line("📋 Procesando: {$nombreHoja} → {$nombreCategoria}");
+        $nombreHoja   = $config['nombre'];
+        $categoriaStr = $config['categoria'];
+        $colNombre    = $config['col_nombre'];
+        $colPrecio    = $config['col_precio'];
+        $gid          = $config['gid'];
 
-        // Buscar categoría en la BD
+        $this->line("📋 {$nombreHoja} → {$categoriaStr}");
+
+        // Buscar categoría en la BD (búsqueda flexible)
         $categoria = Categoria::where('comercio_id', 1)
-            ->where('nombre', 'like', "%{$nombreCategoria}%")
+            ->where(function($q) use ($categoriaStr) {
+                $q->where('nombre', $categoriaStr)
+                  ->orWhere('nombre', 'like', "%{$categoriaStr}%");
+            })
             ->first();
 
         if (!$categoria) {
-            $this->warn("   ⚠ Categoría '{$nombreCategoria}' no encontrada en BD. Saltando.");
+            $this->warn("   ⚠ Categoría '{$categoriaStr}' no encontrada. Saltando.");
             $this->errores++;
             return;
         }
 
-        // Obtener GID de la hoja
-        $gid = self::GIDS[$nombreHoja] ?? null;
-        if (!$gid) {
-            $this->warn("   ⚠ GID no configurado para '{$nombreHoja}'. Saltando.");
-            return;
-        }
-
-        // Descargar CSV de la hoja
-        $url = sprintf(
-            'https://docs.google.com/spreadsheets/d/%s/export?format=csv&gid=%s',
-            self::SHEET_ID,
-            $gid
-        );
+        // Construir URL de exportación CSV
+        $url = "https://docs.google.com/spreadsheets/d/" . self::SHEET_ID
+             . "/export?format=csv&gid={$gid}";
 
         try {
-            $response = Http::timeout(15)->get($url);
+            $response = Http::timeout(20)
+                ->withHeaders(['Accept' => 'text/csv'])
+                ->get($url);
 
             if (!$response->successful()) {
-                $this->error("   ❌ Error HTTP {$response->status()} al descargar '{$nombreHoja}'");
+                $this->error("   ❌ Error HTTP {$response->status()}");
                 $this->errores++;
                 return;
             }
 
             $filas = $this->parsearCSV($response->body());
-            $this->sincronizarFilas($filas, $categoria);
+
+            if (empty($filas)) {
+                $this->warn("   ⚠ Hoja vacía o sin datos legibles.");
+                return;
+            }
+
+            // Saltar fila de encabezados (fila 2 en la planilla = índice 0 en el CSV)
+            $count = 0;
+            foreach ($filas as $i => $fila) {
+                // Saltar fila de encabezados
+                if ($i === 0) continue;
+
+                $nombre = trim($fila[$colNombre] ?? '');
+                $precio = $this->limpiarPrecio($fila[$colPrecio] ?? '');
+
+                // Validaciones: saltar filas inválidas
+                if (empty($nombre) || strlen($nombre) < 3)  { $this->saltados++; continue; }
+                if ($nombre === 'TIPO' || $nombre === '-')   { $this->saltados++; continue; }
+                if ($precio <= 0)                            { $this->saltados++; continue; }
+
+                if ($this->dryRun) {
+                    $this->line("   [DRY] {$nombre} → $" . number_format($precio, 0, ',', '.'));
+                } else {
+                    $this->upsertProducto($nombre, $precio, $categoria);
+                }
+                $count++;
+            }
+
+            $this->info("   ✓ {$count} productos procesados en '{$categoriaStr}'");
 
         } catch (\Exception $e) {
-            $this->error("   ❌ Excepción: " . $e->getMessage());
+            $this->error("   ❌ " . $e->getMessage());
             $this->errores++;
         }
     }
 
     /**
-     * Convierte el body CSV en un array de filas asociativas.
-     * La primera fila se usa como encabezados.
-     *
-     * @param string $csv Contenido CSV crudo
-     * @return array Array de arrays asociativos
+     * Convierte el CSV crudo en array de arrays.
+     * Maneja correctamente valores con comas dentro de comillas.
      */
     private function parsearCSV(string $csv): array
     {
-        $lineas = str_getcsv($csv, "\n");
-        if (count($lineas) < 2) return [];
-
-        // Primera fila = encabezados
-        $headers = str_getcsv(array_shift($lineas));
-        $headers = array_map('trim', $headers);
-
         $filas = [];
-        foreach ($lineas as $linea) {
-            if (empty(trim($linea))) continue;
-            $valores = str_getcsv($linea);
-            // Asegurar que tenga la misma cantidad de columnas que los headers
-            while (count($valores) < count($headers)) {
-                $valores[] = '';
-            }
-            $filas[] = array_combine($headers, $valores);
+        // str_getcsv con "\n" puede fallar en algunos sistemas
+        // Usamos fgetcsv sobre un stream en memoria
+        $stream = fopen('php://memory', 'r+');
+        fwrite($stream, $csv);
+        rewind($stream);
+
+        while (($row = fgetcsv($stream)) !== false) {
+            $filas[] = $row;
         }
+        fclose($stream);
 
         return $filas;
     }
 
     /**
-     * Sincroniza las filas del CSV con la base de datos.
-     * Detecta automáticamente las columnas de nombre y precio.
-     *
-     * @param array     $filas     Array de filas del CSV
-     * @param Categoria $categoria Categoría a asignar
-     */
-    private function sincronizarFilas(array $filas, Categoria $categoria): void
-    {
-        if (empty($filas)) {
-            $this->warn('   ⚠ Hoja vacía o sin datos.');
-            return;
-        }
-
-        // Detectar columnas automáticamente (puede variar entre hojas)
-        $primeraFila = $filas[0];
-        $columnas    = array_keys($primeraFila);
-
-        $colNombre = $this->detectarColumna($columnas, ['producto', 'nombre', 'descripcion', 'item', 'articulo']);
-        $colPrecio = $this->detectarColumna($columnas, ['precio', 'efectivo', 'cash', 'price', 'valor']);
-
-        if (!$colNombre || !$colPrecio) {
-            $this->warn("   ⚠ No se detectaron columnas de nombre/precio. Columnas: " . implode(', ', $columnas));
-            return;
-        }
-
-        $this->line("   Columnas: nombre='{$colNombre}', precio='{$colPrecio}'");
-
-        $sincronizados = 0;
-        foreach ($filas as $fila) {
-            $nombre = trim($fila[$colNombre] ?? '');
-            $precio = $this->limpiarPrecio($fila[$colPrecio] ?? '');
-
-            // Saltar filas sin nombre o precio inválido
-            if (empty($nombre) || $nombre === '-' || strlen($nombre) < 3) continue;
-            if ($precio <= 0) continue;
-
-            if (!$this->dryRun) {
-                $this->upsertProducto($nombre, $precio, $categoria);
-            } else {
-                $this->line("   [DRY] {$nombre} → $" . number_format($precio, 0, ',', '.'));
-            }
-
-            $sincronizados++;
-        }
-
-        $this->info("   ✓ {$sincronizados} productos procesados");
-    }
-
-    /**
-     * Detecta qué columna del CSV corresponde a un campo buscado.
-     * Compara en minúsculas y busca coincidencias parciales.
-     *
-     * @param array $columnas  Nombres de columnas disponibles
-     * @param array $candidatos Posibles nombres a buscar
-     */
-    private function detectarColumna(array $columnas, array $candidatos): ?string
-    {
-        foreach ($columnas as $col) {
-            $colLower = strtolower(trim($col));
-            foreach ($candidatos as $candidato) {
-                if (str_contains($colLower, $candidato)) {
-                    return $col;
-                }
-            }
-        }
-        return null;
-    }
-
-    /**
-     * Limpia y convierte un string de precio a float.
-     * Maneja formatos como "$1.500", "1500,00", "1.500,00".
+     * Limpia strings de precio como "$6.900,00" o "6900" → 6900.0
+     * Maneja formatos argentinos (punto como separador de miles, coma como decimal)
      */
     private function limpiarPrecio(string $valor): float
     {
-        // Eliminar símbolos de moneda, espacios y caracteres no numéricos
+        if (empty(trim($valor))) return 0;
+
+        // Quitar símbolo de peso, espacios y caracteres no numéricos excepto .,
         $limpio = preg_replace('/[^\d,.]/', '', $valor);
 
-        // Si tiene coma como separador decimal (1.500,00)
+        if (empty($limpio)) return 0;
+
+        // Formato argentino: $6.900,00 → quitar puntos, reemplazar coma por punto
         if (str_contains($limpio, ',')) {
-            $limpio = str_replace('.', '', $limpio);
-            $limpio = str_replace(',', '.', $limpio);
-        } else {
-            // Si tiene punto como separador de miles (1.500)
-            if (substr_count($limpio, '.') === 1 && strlen(explode('.', $limpio)[1]) === 3) {
+            // Tiene coma → es separador decimal en formato argentino
+            $limpio = str_replace('.', '', $limpio);   // quitar separadores de miles
+            $limpio = str_replace(',', '.', $limpio);  // coma decimal → punto
+        } elseif (substr_count($limpio, '.') === 1) {
+            // Un solo punto → puede ser decimal o separador de miles
+            $partes = explode('.', $limpio);
+            if (strlen($partes[1]) === 3) {
+                // Es separador de miles: 6.900
                 $limpio = str_replace('.', '', $limpio);
             }
+            // Si no, es decimal normal: 69.00
         }
 
         return (float) $limpio;
     }
 
     /**
-     * Crea o actualiza un producto en la base de datos.
-     * Si ya existe por nombre y categoría, solo actualiza el precio.
-     * Si no existe, lo crea con código interno generado automáticamente.
+     * Crea o actualiza un producto en la BD.
+     * - Si existe por nombre+categoría → actualiza precio si cambió
+     * - Si no existe → lo crea con código interno auto-generado
+     *
+     * No modifica stock ni otros campos para no pisar datos del operador.
      */
     private function upsertProducto(string $nombre, float $precio, Categoria $categoria): void
     {
@@ -285,26 +264,35 @@ class SincronizarProductosSheets extends Command
             ->first();
 
         if ($producto) {
-            // Solo actualiza si el precio cambió
-            if (abs((float)$producto->precio_efectivo - $precio) > 0.01) {
+            $precioActual = (float) $producto->precio_efectivo;
+
+            if (abs($precioActual - $precio) > 0.01) {
+                // Solo actualiza si el precio realmente cambió
                 $producto->update(['precio_efectivo' => $precio]);
                 $this->actualizados++;
-                $this->line("   ↑ Actualizado: {$nombre} → $" . number_format($precio, 0, ',', '.'));
+                $this->line(sprintf(
+                    "   ↑ %s: $%s → $%s",
+                    $nombre,
+                    number_format($precioActual, 0, ',', '.'),
+                    number_format($precio, 0, ',', '.')
+                ));
+            } else {
+                $this->saltados++;
             }
         } else {
             Producto::create([
-                'comercio_id'    => 1,
-                'categoria_id'   => $categoria->id,
-                'nombre'         => $nombre,
-                'precio_efectivo'=> $precio,
-                'moneda'         => 'ARS',
-                'stock_actual'   => 0,
-                'stock_minimo'   => 1,
-                'activo'         => true,
-                'codigo_interno' => Producto::generarCodigoInterno(),
+                'comercio_id'     => 1,
+                'categoria_id'    => $categoria->id,
+                'nombre'          => $nombre,
+                'precio_efectivo' => $precio,
+                'moneda'          => 'ARS',
+                'stock_actual'    => 0,
+                'stock_minimo'    => 1,
+                'activo'          => true,
+                'codigo_interno'  => Producto::generarCodigoInterno(),
             ]);
             $this->creados++;
-            $this->line("   + Creado: {$nombre} → $" . number_format($precio, 0, ',', '.'));
+            $this->line("   ➕ " . $nombre . " → $" . number_format($precio, 0, ',', '.'));
         }
     }
 }

@@ -1,59 +1,103 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# BE Store — Sistema de Gestión Comercial
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+Sistema de gestión para local de accesorios y venta de celulares.
+Desarrollado con Laravel 12, Livewire 4, MariaDB y Vite.
 
-## About Laravel
+## Stack tecnológico
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+| Capa | Tecnología |
+|------|-----------|
+| Backend | PHP 8.2 + Laravel 12 |
+| Frontend | Blade + Livewire 4 |
+| Base de datos | MariaDB 10.11 |
+| Assets | Vite 7 + CSS modular |
+| Servidor | Apache 2 (bestore.local) |
+| OS | Huayra Linux (Debian) |
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+## Módulos del sistema
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+- **Dashboard** — métricas del día, dólar blue, acceso rápido
+- **Punto de venta** — búsqueda reactiva, carrito, 5 medios de pago, parte de pago en equipos
+- **Productos** — CRUD con código de barras (pistola USB + cámara)
+- **Equipos** — gestión por IMEI, precio USD → ARS automático
+- **Clientes** — ABM con historial de compras
+- **Compras** — registro de entrada de stock por proveedor
+- **Ventas** — historial con filtros y vista detalle
+- **Categorías** — ABM completo con ordenamiento
+- **Proveedores** — ABM con historial
+- **Usuarios** — roles admin/vendedor
+- **Reportes** — ventas por período, categoría, medio de pago
+- **Configuración** — recargos editables + sync dólar blue API
 
-## Learning Laravel
+## Automatizaciones
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework. You can also check out [Laravel Learn](https://laravel.com/learn), where you will be guided through building a modern Laravel application.
+```bash
+# Sincronizar dólar blue (manual)
+php artisan bestore:dolar
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+# Sincronizar productos desde Google Sheets (manual)
+php artisan bestore:sync-sheets
 
-## Laravel Sponsors
+# Modo dry-run (simular sin guardar)
+php artisan bestore:sync-sheets --dry-run
+```
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+El scheduler ejecuta ambos automáticamente:
+- Dólar blue: todos los días a las 9:00 AM
+- Google Sheets: todos los lunes a las 8:00 AM
 
-### Premium Partners
+## Instalación local
 
-- **[Vehikl](https://vehikl.com)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Redberry](https://redberry.international/laravel-development)**
-- **[Active Logic](https://activelogic.com)**
+```bash
+# 1. Clonar el repositorio
+git clone https://github.com/eulaandres184-cyber/be-store.git
+cd be-store
 
-## Contributing
+# 2. Instalar dependencias
+composer install
+npm install
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+# 3. Configurar entorno
+cp .env.example .env
+php artisan key:generate
 
-## Code of Conduct
+# 4. Configurar base de datos en .env
+# DB_CONNECTION=mysql
+# DB_DATABASE=be_store
+# DB_USERNAME=bestore_user
+# DB_PASSWORD=tu_password
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+# 5. Migrar y sembrar
+php artisan migrate
+php artisan db:seed
 
-## Security Vulnerabilities
+# 6. Compilar assets
+npm run build
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+# 7. Servidor (desarrollo)
+php artisan serve
+```
 
-## License
+## Estructura de carpetas clave
+cd ~/Documentos/be-store
+php artisan view:clear
+php artisan cache:clear
+php artisan route:clear
+npm run build
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+git add .
+git commit -m "feat: sync completo con google sheets + productos reales
+
+- Bot sync-sheets corregido con estructura real de la planilla
+  * Columnas: A=TIPO, B=EFECTIVO, C=TARJETA
+  * Hoja Fundas y Templados: dos bloques (col A-C y E-G)
+  * Limpieza de precios formato argentino (\$6.900,00)
+  * Modo --dry-run para verificar sin guardar
+- Seeder ProductosSeeder: 20 fundas + 9 templados reales
+- Modelo Proveedor: agregada \$table = 'proveedores'
+- README profesional con instalación y estructura
+- Todos los modelos con \$table explícita en español
+- Comentarios en comandos y modelos"
+git push origin produccion
+git push origin main
+
