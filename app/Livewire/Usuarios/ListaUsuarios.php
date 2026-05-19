@@ -7,37 +7,44 @@ use Illuminate\Support\Facades\Hash;
 
 class ListaUsuarios extends Component
 {
-    public bool   $mostrarForm  = false;
-    public ?int   $userId       = null;
-    public string $name         = '';
-    public string $email        = '';
-    public string $password     = '';
-    public string $rol          = 'vendedor';
-    public bool   $modoEdicion  = false;
+    public bool   $mostrarForm   = false;
+    public ?int   $userId        = null;
+    public string $name          = '';
+    public string $email         = '';
+    public string $nuevaPassword = '';
+    public string $confirmarPassword = '';
+    public string $rol           = 'vendedor';
+    public bool   $modoEdicion   = false;
+    public bool   $cambiarPass   = false;
 
     protected function rules(): array
     {
-        $uniqueEmail = 'required|email|unique:users,email'
-            . ($this->userId ? ",{$this->userId}" : '');
+        $uniqueEmail = 'required|email|unique:users,email' . ($this->userId ? ",{$this->userId}" : '');
+        $passRules   = $this->modoEdicion
+            ? ($this->cambiarPass ? 'required|min:6|same:confirmarPassword' : 'nullable')
+            : 'required|min:6|same:confirmarPassword';
+
         return [
-            'name'     => 'required|string|max:100',
-            'email'    => $uniqueEmail,
-            'password' => $this->modoEdicion ? 'nullable|min:6' : 'required|min:6',
-            'rol'      => 'required|in:admin,vendedor',
+            'name'            => 'required|string|max:100',
+            'email'           => $uniqueEmail,
+            'nuevaPassword'   => $passRules,
+            'confirmarPassword' => 'nullable',
+            'rol'             => 'required|in:admin,vendedor',
         ];
     }
 
     protected $messages = [
-        'name.required'     => 'El nombre es obligatorio.',
-        'email.required'    => 'El email es obligatorio.',
-        'email.unique'      => 'Este email ya está registrado.',
-        'password.required' => 'La contraseña es obligatoria.',
-        'password.min'      => 'La contraseña debe tener al menos 6 caracteres.',
+        'name.required'          => 'El nombre es obligatorio.',
+        'email.required'         => 'El email es obligatorio.',
+        'email.unique'           => 'Este email ya está en uso.',
+        'nuevaPassword.required' => 'La contraseña es obligatoria.',
+        'nuevaPassword.min'      => 'Mínimo 6 caracteres.',
+        'nuevaPassword.same'     => 'Las contraseñas no coinciden.',
     ];
 
     public function nuevo(): void
     {
-        $this->reset(['userId','name','email','password','rol']);
+        $this->reset(['userId','name','email','nuevaPassword','confirmarPassword','rol','cambiarPass']);
         $this->rol         = 'vendedor';
         $this->modoEdicion = false;
         $this->mostrarForm = true;
@@ -49,8 +56,10 @@ class ListaUsuarios extends Component
         $this->userId      = $id;
         $this->name        = $user->name;
         $this->email       = $user->email;
-        $this->password    = '';
         $this->rol         = $user->rol ?? 'vendedor';
+        $this->nuevaPassword = '';
+        $this->confirmarPassword = '';
+        $this->cambiarPass = false;
         $this->modoEdicion = true;
         $this->mostrarForm = true;
     }
@@ -60,41 +69,35 @@ class ListaUsuarios extends Component
         $this->validate();
 
         if ($this->modoEdicion) {
-            $datos = ['name' => $this->name, 'email' => $this->email, 'rol' => $this->rol];
-            if ($this->password) $datos['password'] = Hash::make($this->password);
+            $datos = [
+                'name'  => $this->name,
+                'email' => $this->email,
+                'rol'   => $this->rol,
+            ];
+            if ($this->cambiarPass && $this->nuevaPassword) {
+                $datos['password'] = Hash::make($this->nuevaPassword);
+            }
             User::findOrFail($this->userId)->update($datos);
-            session()->flash('success', 'Usuario actualizado.');
+            session()->flash('success', 'Usuario actualizado correctamente.');
         } else {
             User::create([
                 'name'        => $this->name,
                 'email'       => $this->email,
-                'password'    => Hash::make($this->password),
+                'password'    => Hash::make($this->nuevaPassword),
                 'rol'         => $this->rol,
                 'comercio_id' => 1,
             ]);
-            session()->flash('success', 'Usuario creado.');
+            session()->flash('success', 'Usuario creado correctamente.');
         }
 
         $this->mostrarForm = false;
-        $this->reset(['userId','name','email','password']);
-    }
-
-    public function toggleActivo(int $id): void
-    {
-        if ($id === auth()->id()) {
-            session()->flash('error', 'No podés desactivar tu propio usuario.');
-            return;
-        }
-        $user = User::findOrFail($id);
-        // Usamos una convención: si email contiene [inactivo] está desactivado
-        // En su lugar usamos el campo activo si existe, si no lo simulamos
-        session()->flash('success', 'Estado actualizado.');
+        $this->reset(['userId','name','email','nuevaPassword','confirmarPassword','cambiarPass']);
     }
 
     public function cancelar(): void
     {
         $this->mostrarForm = false;
-        $this->reset(['userId','name','email','password']);
+        $this->reset(['userId','name','email','nuevaPassword','confirmarPassword']);
     }
 
     public function render()
