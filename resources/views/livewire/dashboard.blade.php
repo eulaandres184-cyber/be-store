@@ -1,25 +1,27 @@
 <div>
 @php $esAdmin = (auth()->user()->rol ?? 'vendedor') === 'admin'; @endphp
 
-{{-- Banner dólar blue --}}
-<div class="bs-dolar-banner">
-    <div>
-        <div class="bs-dolar-label">Dólar blue hoy</div>
-        <div class="bs-dolar-val">${{ number_format($dolarHoy,2,',','.') }}</div>
-        <div class="bs-dolar-time">{{ $dolarActualizado }}</div>
-    </div>
-    @if($esAdmin)
-    <a href="{{ route('configuracion') }}" class="bs-btn-secondary" style="font-size:.78rem">Actualizar</a>
-    @endif
-</div>
+<div class="bs-dashboard-grid">
+    <div class="bs-dashboard-left">
+        {{-- Banner dólar blue --}}
+        <div class="bs-dolar-banner">
+            <div>
+                <div class="bs-dolar-label">Dólar blue hoy</div>
+                <div class="bs-dolar-val">${{ number_format($dolarHoy,2,',','.') }}</div>
+                <div class="bs-dolar-time">{{ $dolarActualizado }}</div>
+            </div>
+            @if($esAdmin)
+            <a href="{{ route('configuracion') }}" class="bs-btn-secondary" style="font-size:.78rem">Actualizar</a>
+            @endif
+        </div>
 
-{{-- Métricas --}}
-<div class="bs-metrics">
-    <div class="bs-metric">
-        <div class="bs-metric-label">Ventas hoy</div>
-        <div class="bs-metric-value">${{ number_format($ventasHoy,0,',','.') }}</div>
-        <div class="bs-metric-sub">{{ $cantVentasHoy }} transacciones</div>
-    </div>
+        {{-- Métricas --}}
+        <div class="bs-metrics">
+            <div class="bs-metric">
+                <div class="bs-metric-label">Ventas hoy</div>
+                <div class="bs-metric-value">${{ number_format($ventasHoy,0,',','.') }}</div>
+                <div class="bs-metric-sub">{{ $cantVentasHoy }} transacciones</div>
+            </div>
     <div class="bs-metric" style="border-left-color:#1E8449">
         <div class="bs-metric-label">Productos activos</div>
         <div class="bs-metric-value" style="color:#1E8449">{{ $totalProductos }}</div>
@@ -35,10 +37,14 @@
         <div class="bs-metric-value" style="color:#7D3C98">{{ $equiposDisponibles }}</div>
         <div class="bs-metric-sub">para venta</div>
     </div>
-</div>
+        </div>
+    </div>
 
-{{-- Bloques de acceso --}}
-<div class="bs-grid-bloques">
+    <div class="bs-dashboard-right">
+        {{-- Bloques de acceso --}}
+        <div class="bs-card">
+            <div class="bs-card-title">Accesos rápidos</div>
+            <div class="bs-grid-bloques">
     {{-- Siempre visibles --}}
     <a href="{{ route('pos') }}" class="bs-bloque bloque-pos">
         <div class="bs-bloque-icon"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"/></svg></div>
@@ -109,13 +115,14 @@
         <div class="bs-bloque-sub">Recargos · Dólar</div>
     </a>
     @endif
-</div>
+            </div>
+        </div>
 
-{{-- Últimas ventas --}}
-@if($ultimasVentas->count() > 0)
-<div class="bs-card">
-    <div class="bs-card-title">Últimas ventas del día</div>
-    <table class="bs-table">
+        {{-- Últimas ventas --}}
+        @if($ultimasVentas->count() > 0)
+        <div class="bs-card">
+            <div class="bs-card-title">Últimas ventas del día</div>
+            <table class="bs-table">
         <thead><tr><th>Hora</th><th>Cliente</th><th>Ítems</th><th>Medio de pago</th><th>Total</th><th></th></tr></thead>
         <tbody>
         @foreach($ultimasVentas as $venta)
@@ -129,7 +136,9 @@
         </tr>
         @endforeach
         </tbody>
-    </table>
+        </table>
+        </div>
+        @endif
+    </div>
 </div>
-@endif
 </div>

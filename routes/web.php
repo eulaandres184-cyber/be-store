@@ -44,8 +44,6 @@ Route::middleware(['auth'])->group(function () {
 
     // Clientes — acceso total
     Route::get('/clientes',       ListaClientes::class)->name('clientes');
-    Route::get('/clientes/nuevo', FormCliente::class)->name('clientes.nuevo');
-    Route::get('/clientes/{id}',  FormCliente::class)->name('clientes.editar');
 
     // Ventas — acceso total
     Route::get('/ventas',        HistorialVentas::class)->name('ventas');
@@ -79,6 +77,10 @@ Route::middleware(['auth', 'rol:admin'])->group(function () {
     Route::get('/compras',           ListaCompras::class)->name('compras');
     Route::get('/compras/nueva',     FormCompra::class)->name('compras.nueva');
 
+    // Clientes — solo admin
+    Route::get('/clientes/nuevo',    FormCliente::class)->name('clientes.nuevo');
+    Route::get('/clientes/{id}',     FormCliente::class)->name('clientes.editar');
+
     // Reportes — solo admin
     Route::get('/reportes',          Reportes::class)->name('reportes');
 
@@ -92,4 +94,4 @@ Route::middleware(['auth', 'rol:admin'])->group(function () {
     Route::get('/proveedores',       ListaProveedores::class)->name('proveedores');
 });
 
-require __DIR__.'/auth.php';
+require __DIR__ . '/auth.php';

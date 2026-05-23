@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Livewire;
 
 use Livewire\Component;
@@ -32,9 +33,14 @@ class Configuracion extends Component
         'dolar_blue_hoy.required'    => 'Ingresá el valor del dólar.',
     ];
 
+    protected function comercioId(): int
+    {
+        return auth()->user()?->comercio_id ?? 1;
+    }
+
     public function mount(): void
     {
-        $config = ConfigModel::where('comercio_id', 1)->first();
+        $config = ConfigModel::where('comercio_id', $this->comercioId())->first();
         if ($config) {
             $this->recargo_tarjeta   = (string) $config->recargo_tarjeta;
             $this->cuotas_4_recargo  = (string) $config->cuotas_4_recargo;
@@ -52,7 +58,7 @@ class Configuracion extends Component
         $this->validateOnly('cuotas_4_recargo');
         $this->validateOnly('cuotas_20_recargo');
 
-        ConfigModel::where('comercio_id', 1)->update([
+        ConfigModel::where('comercio_id', $this->comercioId())->update([
             'recargo_tarjeta'   => (float) $this->recargo_tarjeta,
             'cuotas_4_recargo'  => (float) $this->cuotas_4_recargo,
             'cuotas_20_recargo' => (float) $this->cuotas_20_recargo,
@@ -65,10 +71,10 @@ class Configuracion extends Component
     {
         $this->validateOnly('dolar_blue_hoy');
 
-        $config = ConfigModel::where('comercio_id', 1)->first();
+        $config = ConfigModel::where('comercio_id', $this->comercioId())->first();
         $config->update([
             'dolar_blue_hoy'      => (float) $this->dolar_blue_hoy,
-            'dolar_actualizado_en'=> now(),
+            'dolar_actualizado_en' => now(),
         ]);
 
         HistorialDolar::updateOrCreate(
@@ -99,7 +105,7 @@ class Configuracion extends Component
                 if ($valorVenta) {
                     $this->dolar_blue_hoy = (string) $valorVenta;
 
-                    ConfigModel::where('comercio_id', 1)->update([
+                    ConfigModel::where('comercio_id', $this->comercioId())->update([
                         'dolar_blue_hoy'       => $valorVenta,
                         'dolar_actualizado_en' => now(),
                     ]);

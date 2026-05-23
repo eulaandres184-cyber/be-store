@@ -4,9 +4,12 @@
 @if(session('success'))<div class="bs-alert-success">✅ {{ session('success') }}</div>@endif
 @if(session('warning'))<div class="bs-alert-warning">⚠️ {{ session('warning') }}</div>@endif
 
+@php $esAdmin = (auth()->user()->rol ?? 'vendedor') === 'admin'; @endphp
 <div class="bs-page-title">
     <span>📦 Productos</span>
-    <a href="{{ route('productos.nuevo') }}" class="bs-btn-black">+ Nuevo producto</a>
+    @if($esAdmin)
+        <a href="{{ route('productos.nuevo') }}" class="bs-btn-black">+ Nuevo producto</a>
+    @endif
 </div>
 
 <div class="productos-filtros">
@@ -77,11 +80,13 @@
             </td>
             <td>
                 <div class="tbl-actions">
-                    <a href="{{ route('productos.editar', $producto->id) }}" class="btn-edit">Editar</a>
-                    @if($producto->activo)
-                        <button wire:click="eliminar({{ $producto->id }})" wire:confirm="¿Desactivar este producto?" class="btn-del">Desactivar</button>
-                    @else
-                        <button wire:click="activar({{ $producto->id }})" class="btn-edit">Activar</button>
+                    @if($esAdmin)
+                        <a href="{{ route('productos.editar', $producto->id) }}" class="btn-edit">Editar</a>
+                        @if($producto->activo)
+                            <button wire:click="eliminar({{ $producto->id }})" wire:confirm="¿Desactivar este producto?" class="btn-del">Desactivar</button>
+                        @else
+                            <button wire:click="activar({{ $producto->id }})" class="btn-edit">Activar</button>
+                        @endif
                     @endif
                 </div>
             </td>

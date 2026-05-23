@@ -2,9 +2,12 @@
 <div>
 @if(session('success'))<div class="bs-alert-success">✅ {{ session('success') }}</div>@endif
 
+@php $esAdmin = (auth()->user()->rol ?? 'vendedor') === 'admin'; @endphp
 <div class="bs-page-title">
     <span>📱 Equipos móviles</span>
-    <a href="{{ route('equipos.nuevo') }}" class="bs-btn-black">+ Nuevo equipo</a>
+    @if($esAdmin)
+        <a href="{{ route('equipos.nuevo') }}" class="bs-btn-black">+ Nuevo equipo</a>
+    @endif
 </div>
 
 {{-- Banner dólar --}}
@@ -73,7 +76,9 @@
             </td>
             <td>
                 <div class="tbl-actions">
-                    <a href="{{ route('equipos.editar', $equipo->id) }}" class="btn-edit">Editar</a>
+                    @if($esAdmin)
+                        <a href="{{ route('equipos.editar', $equipo->id) }}" class="btn-edit">Editar</a>
+                    @endif
                 </div>
             </td>
         </tr>

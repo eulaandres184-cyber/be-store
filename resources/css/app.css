@@ -231,3 +231,57 @@ input, select, textarea { font-family: inherit; }
 .bs-quicknav a.active { background: var(--bs-black); color: var(--bs-white); }
 .bs-quicknav-sep { color: var(--bs-gray-border); font-size: .7rem; }
 @media(max-width:768px){ .bs-quicknav { display: none; } }
+
+
+/* Con sidebar de 220px el contenido tiene menos ancho — ajustar */
+@media(min-width: 769px) {
+    .bs-content { max-width: 100%; }
+    .bs-grid-bloques { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+}
+
+/* ── Grid de bloques del dashboard ── */
+.bs-grid-bloques {
+    display: grid !important;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)) !important;
+    gap: .75rem;
+    margin-bottom: 1.25rem;
+}
+
+.bs-dashboard-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1.25rem;
+    margin-bottom: 1.25rem;
+}
+
+.bs-dashboard-left,
+.bs-dashboard-right {
+    display: grid;
+    gap: 1.25rem;
+}
+
+.bs-dashboard-right > .bs-card {
+    min-height: 0;
+}
+
+@media (min-width: 768px) {
+    .bs-dashboard-grid {
+        grid-template-columns: minmax(320px, 1.05fr) minmax(360px, 1fr);
+        align-items: start;
+    }
+}
+
+@media (min-width: 1024px) {
+    .bs-dashboard-grid {
+        grid-template-columns: minmax(360px, 1.05fr) minmax(420px, 1fr);
+    }
+}
+
+/* Forzar que el contenido principal no herede flex-direction column */
+.bs-content > div,
+.bs-content > div > div {
+    display: block;
+}
+
+/* ── Asegurar que el slot del layout no fuerza columna ── */
+main.bs-content { display: block !important; }

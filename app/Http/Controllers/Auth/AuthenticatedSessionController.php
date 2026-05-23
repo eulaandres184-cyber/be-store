@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
@@ -17,14 +18,6 @@ class AuthenticatedSessionController extends Controller
 
     public function store(LoginRequest $request): RedirectResponse
     {
-        // Validar captcha
-        $request->validate([
-            'captcha' => 'required|captcha',
-        ], [
-            'captcha.required' => 'Ingresá el código de verificación.',
-            'captcha.captcha'  => 'El código de verificación es incorrecto.',
-        ]);
-
         $request->authenticate();
         $request->session()->regenerate();
 

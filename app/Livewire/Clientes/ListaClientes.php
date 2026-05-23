@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Livewire\Clientes;
 
 use Livewire\Component;
@@ -24,8 +25,16 @@ class ListaClientes extends Component
         $this->resetPage();
     }
 
+    private function authorizeAdmin(): void
+    {
+        if (auth()->user()?->rol !== 'admin') {
+            abort(403);
+        }
+    }
+
     public function toggleActivo(int $id): void
     {
+        $this->authorizeAdmin();
         $c = Cliente::findOrFail($id);
         $c->update(['activo' => !$c->activo]);
     }

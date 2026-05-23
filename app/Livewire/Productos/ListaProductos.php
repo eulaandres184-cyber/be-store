@@ -19,8 +19,14 @@ class ListaProductos extends Component
 
     protected $queryString = ['busqueda', 'categoriaFiltro', 'estadoFiltro'];
 
-    public function updatingBusqueda()        { $this->resetPage(); }
-    public function updatingCategoriaFiltro() { $this->resetPage(); }
+    public function updatingBusqueda()
+    {
+        $this->resetPage();
+    }
+    public function updatingCategoriaFiltro()
+    {
+        $this->resetPage();
+    }
 
     public function ordenar(string $columna): void
     {
@@ -38,8 +44,16 @@ class ListaProductos extends Component
         return Categoria::where('comercio_id', 1)->where('activo', true)->orderBy('orden')->get();
     }
 
+    private function authorizeAdmin(): void
+    {
+        if (auth()->user()?->rol !== 'admin') {
+            abort(403);
+        }
+    }
+
     public function eliminar(int $id): void
     {
+        $this->authorizeAdmin();
         $producto = Producto::findOrFail($id);
         $producto->update(['activo' => false]);
         session()->flash('success', "Producto '{$producto->nombre}' desactivado.");
@@ -47,6 +61,7 @@ class ListaProductos extends Component
 
     public function activar(int $id): void
     {
+        $this->authorizeAdmin();
         $producto = Producto::findOrFail($id);
         $producto->update(['activo' => true]);
         session()->flash('success', "Producto '{$producto->nombre}' activado.");

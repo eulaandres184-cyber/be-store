@@ -2,9 +2,12 @@
 <div>
 @if(session('success'))<div class="bs-alert-success">✅ {{ session('success') }}</div>@endif
 
+@php $esAdmin = (auth()->user()->rol ?? 'vendedor') === 'admin'; @endphp
 <div class="bs-page-title">
     <span>👥 Clientes</span>
-    <a href="{{ route('clientes.nuevo') }}" class="bs-btn-black">+ Nuevo cliente</a>
+    @if($esAdmin)
+        <a href="{{ route('clientes.nuevo') }}" class="bs-btn-black">+ Nuevo cliente</a>
+    @endif
 </div>
 
 <div class="productos-filtros">
@@ -42,10 +45,12 @@
             <td><span class="bs-badge-{{ $cliente->activo?'green':'red' }}">{{ $cliente->activo?'Activo':'Inactivo' }}</span></td>
             <td>
                 <div class="tbl-actions">
-                    <a href="{{ route('clientes.editar', $cliente->id) }}" class="btn-edit">Editar</a>
-                    <button wire:click="toggleActivo({{ $cliente->id }})" class="btn-edit">
-                        {{ $cliente->activo ? 'Desactivar' : 'Activar' }}
-                    </button>
+                    @if($esAdmin)
+                        <a href="{{ route('clientes.editar', $cliente->id) }}" class="btn-edit">Editar</a>
+                        <button wire:click="toggleActivo({{ $cliente->id }})" class="btn-edit">
+                            {{ $cliente->activo ? 'Desactivar' : 'Activar' }}
+                        </button>
+                    @endif
                 </div>
             </td>
         </tr>
