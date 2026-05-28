@@ -236,15 +236,25 @@ input, select, textarea { font-family: inherit; }
 /* Con sidebar de 220px el contenido tiene menos ancho — ajustar */
 @media(min-width: 769px) {
     .bs-content { max-width: 100%; }
-    .bs-grid-bloques { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
 }
 
 /* ── Grid de bloques del dashboard ── */
 .bs-grid-bloques {
     display: grid !important;
-    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)) !important;
-    gap: .75rem;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)) !important;
+    gap: 1rem;
     margin-bottom: 1.25rem;
+    width: 100%;
+}
+
+.bs-grid-bloques > a {
+    width: 100%;
+}
+
+@media (min-width: 1024px) {
+    .bs-grid-bloques {
+        grid-template-columns: repeat(5, minmax(160px, 1fr));
+    }
 }
 
 .bs-dashboard-grid {
