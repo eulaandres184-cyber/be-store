@@ -125,6 +125,14 @@ $comercio = $doc->comercio;
     <div class="doc-dolar">Cotización dólar blue: ${{ number_format($doc->dolar_blue,2,',','.') }} — {{ $doc->emitido_en->format('d/m/Y H:i') }}</div>
     @endif
 
+    {{-- CAE AFIP --}}
+    @if($doc->tipo === 'factura' && $doc->tiene_cae)
+    <div style="text-align:center; padding: 1rem 0; font-size: .8rem; border-top: 1px dashed var(--bs-gray-border); margin-top: 1rem;">
+        <div><strong>CAE:</strong> {{ $doc->cae }}</div>
+        <div><strong>Vto. CAE:</strong> {{ $doc->cae_vto->format('d/m/Y') }}</div>
+    </div>
+    @endif
+
     {{-- Pie --}}
     <div class="doc-footer">
         {{ $comercio->nombre }}

@@ -2,9 +2,11 @@
 <style>
 .bs-grid-bloques {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    /* Se cambió el mínimo de 150px a 120px para asegurar que entren en pantalla como cuadrícula */
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
     gap: .75rem;
     margin-bottom: 1.25rem;
+    width: 100%;
 }
 .bs-bloque {
     background: #fff;
@@ -119,29 +121,9 @@
         <div class="bs-bloque-sub">Contactos</div>
     </a>
     <a href="{{ route('configuracion') }}" class="bs-bloque">
-        <div class="bs-bloque-icon"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><circle cx="12" cy="12" r="3" stroke-width="2"/></svg></div>
+        <div class="bs-bloque-icon"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg></div>
         <div class="bs-bloque-label">Configuración</div>
-        <div class="bs-bloque-sub">Recargos · Dólar</div>
+        <div class="bs-bloque-sub">Ajustes</div>
     </a>
 </div>
-
-{{-- Últimas ventas del día --}}
-@if($ultimasVentas->count() > 0)
-<div class="bs-card">
-    <div class="bs-card-title">Últimas ventas del día</div>
-    <table class="bs-table">
-        <thead><tr><th>Hora</th><th>Productos</th><th>Medio de pago</th><th>Total</th></tr></thead>
-        <tbody>
-        @foreach($ultimasVentas as $venta)
-        <tr>
-            <td>{{ $venta->fecha->format('H:i') }}</td>
-            <td>{{ $venta->items->count() }} ítem(s)</td>
-            <td><span class="bs-badge-{{ $venta->medio_pago === 'efectivo' || $venta->medio_pago === 'transferencia' ? 'green' : ($venta->medio_pago === 'tarjeta' ? 'amber' : 'blue') }}">{{ $venta->label_medio_pago }}</span></td>
-            <td style="color:#1E6FBB;font-weight:600">${{ number_format($venta->total_ars, 0, ',', '.') }}</td>
-        </tr>
-        @endforeach
-        </tbody>
-    </table>
-</div>
-@endif
 </x-layouts.app>

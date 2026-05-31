@@ -157,7 +157,7 @@ input, select, textarea { font-family: inherit; }
 .bs-dolar-time   { font-size: .7rem; color: #7A8FA6; margin-top: 2px; }
 
 /* ── Bloques dashboard ── */
-.bs-grid-bloques  { display: grid; grid-template-columns: repeat(auto-fit, minmax(155px, 1fr)); gap: .75rem; margin-bottom: 1.25rem; }
+.bs-grid-bloques  { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: .75rem; margin-bottom: 1.25rem; }
 .bs-bloque {
     background: var(--bs-white); border: 1.5px solid var(--bs-gray-border);
     border-radius: var(--bs-radius-xl); padding: 1.25rem 1rem;
@@ -238,25 +238,7 @@ input, select, textarea { font-family: inherit; }
     .bs-content { max-width: 100%; }
 }
 
-/* ── Grid de bloques del dashboard ── */
-.bs-grid-bloques {
-    display: grid !important;
-    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)) !important;
-    gap: 1rem;
-    margin-bottom: 1.25rem;
-    width: 100%;
-}
-
-.bs-grid-bloques > a {
-    width: 100%;
-}
-
-@media (min-width: 1024px) {
-    .bs-grid-bloques {
-        grid-template-columns: repeat(5, minmax(160px, 1fr));
-    }
-}
-
+/* ── Grid del dashboard (2 columnas en desktop) ── */
 .bs-dashboard-grid {
     display: grid;
     grid-template-columns: 1fr;
@@ -266,7 +248,8 @@ input, select, textarea { font-family: inherit; }
 
 .bs-dashboard-left,
 .bs-dashboard-right {
-    display: grid;
+    display: flex;
+    flex-direction: column;
     gap: 1.25rem;
 }
 
@@ -286,12 +269,3 @@ input, select, textarea { font-family: inherit; }
         grid-template-columns: minmax(360px, 1.05fr) minmax(420px, 1fr);
     }
 }
-
-/* Forzar que el contenido principal no herede flex-direction column */
-.bs-content > div,
-.bs-content > div > div {
-    display: block;
-}
-
-/* ── Asegurar que el slot del layout no fuerza columna ── */
-main.bs-content { display: block !important; }

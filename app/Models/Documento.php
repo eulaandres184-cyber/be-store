@@ -17,15 +17,23 @@ class Documento extends Model
         'comercio_id','venta_id','cliente_id','user_id',
         'tipo','numero','subtotal','descuento','total',
         'moneda','dolar_blue','items','pagos',
-        'observaciones','anulado','emitido_en'
+        'observaciones','anulado','emitido_en',
+        'cae','cae_vto','afip_respuesta',
     ];
 
     protected $casts = [
-        'items'       => 'array',
-        'pagos'       => 'array',
-        'anulado'     => 'boolean',
-        'emitido_en'  => 'datetime',
+        'items'        => 'array',
+        'pagos'        => 'array',
+        'anulado'      => 'boolean',
+        'emitido_en'   => 'datetime',
+        'cae_vto'      => 'date',
     ];
+
+    /** Indica si el documento tiene CAE emitido por AFIP */
+    public function getTieneCaeAttribute(): bool
+    {
+        return !empty($this->cae);
+    }
 
     public function venta()   { return $this->belongsTo(Venta::class); }
     public function cliente() { return $this->belongsTo(Cliente::class); }

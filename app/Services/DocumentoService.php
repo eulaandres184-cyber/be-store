@@ -5,7 +5,9 @@ use App\Models\Comercio;
 use App\Models\Documento;
 use App\Models\Venta;
 use App\Models\Configuracion;
+use App\Services\AfipService;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 /**
  * DocumentoService
@@ -45,14 +47,19 @@ class DocumentoService
     }
 
     /**
-     * Crea una Factura C (Monotributista) a partir de una venta.
+     * Crea una Factura C (Monotributista) a partir de una venta
+     * y solicita el CAE a AFIP-ARCA.
+     *
+     * Si la comunicación con AFIP falla, la factura se guarda igualmente
+     * en estado local (sin CAE) para no bloquear la operación comercial.
+     * El error queda en el log para seguimiento.
      */
     public function crearFactura(Venta $venta, ?array $datosCliente = null): Documento
     {
         $comercio = Comercio::find($venta->comercio_id);
         $venta->load(['items.producto', 'cliente']);
 
-        return DB::transaction(function () use ($venta, $comercio, $datosCliente) {
+        $documento = DB::transaction(function () use ($venta, $comercio, $datosCliente) {
             return Documento::create([
                 'comercio_id'  => $comercio->id,
                 'venta_id'     => $venta->id,
@@ -71,6 +78,35 @@ class DocumentoService
                 'emitido_en'   => now(),
             ]);
         });
+
+        // ── Solicitar CAE a AFIP-ARCA ──────────────────────────────────────────
+        try {
+            $afip   = new AfipService();
+            $resultado = $afip->solicitarCAE($documento, $comercio);
+
+            $documento->update([
+                'cae'            => $resultado['cae'],
+                'cae_vto'        => $resultado['cae_vto'],
+                'afip_respuesta' => $resultado['respuesta_raw'],
+            ]);
+
+            Log::info('CAE obtenido', [
+                'documento_id' => $documento->id,
+                'numero'       => $documento->numero,
+                'cae'          => $resultado['cae'],
+                'vto'          => $resultado['cae_vto'],
+            ]);
+        } catch (\Throwable $e) {
+            // No bloquear: la factura ya fue creada, solo falta el CAE
+            Log::error('Error al solicitar CAE a AFIP', [
+                'documento_id' => $documento->id,
+                'error'        => $e->getMessage(),
+            ]);
+            // Guardar el error en el campo de respuesta para diagnóstico
+            $documento->update(['afip_respuesta' => json_encode(['error' => $e->getMessage()])]);
+        }
+
+        return $documento->fresh();
     }
 
     /**
