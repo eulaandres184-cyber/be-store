@@ -11,9 +11,6 @@ use Illuminate\Support\Facades\Auth;
 
 class Dashboard extends Component
 {
-    protected $layout = 'layouts.app';
-    protected $layoutData = ['title' => 'Dashboard'];
-
     public function render()
     {
         $comercioId = Auth::user()?->comercio_id ?? 1;
@@ -55,6 +52,6 @@ class Dashboard extends Component
             'stockBajo'          => $stockBajo,
             'equiposDisponibles' => $equiposDisponibles,
             'ultimasVentas'      => $ultimasVentas,
-        ]);
+        ])->layout('layouts.app', ['title' => 'Dashboard']);
     }
 }
