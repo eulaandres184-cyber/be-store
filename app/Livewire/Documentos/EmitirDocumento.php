@@ -4,42 +4,32 @@ namespace App\Livewire\Documentos;
 use Livewire\Component;
 use App\Models\Venta;
 use App\Models\Documento;
-use App\Models\Cliente;
 use App\Models\Configuracion;
 use App\Services\DocumentoService;
+use App\Services\AfipService;
 
-/**
- * EmitirDocumento
- *
- * Componente Livewire para emitir cualquier tipo de documento
- * asociado a una venta: ticket, factura, recibo o presupuesto.
- */
 class EmitirDocumento extends Component
 {
     public int    $ventaId;
     public string $tipo          = 'ticket';
     public bool   $mostrarModal  = false;
-
-    // Datos adicionales para factura
     public string $clienteNombre = '';
     public string $clienteDni    = '';
     public string $clienteDomicilio = '';
-
-    // Datos para recibo con múltiples pagos
     public array  $pagos         = [];
     public string $pagoMetodo    = 'efectivo';
     public string $pagoMonto     = '';
     public string $pagoMoneda    = 'ARS';
     public string $observaciones = '';
-
-    // Documento generado
     public ?int   $documentoId   = null;
+    public ?string $cae          = null;
+    public ?string $caeVencimiento = null;
+    public ?string $errorAfip    = null;
+    public bool   $afipDisponible = true;
 
     public function mount(int $ventaId): void
     {
         $this->ventaId = $ventaId;
-
-        // Pre-cargar datos del cliente si existe
         $venta = Venta::with('cliente')->find($ventaId);
         if ($venta?->cliente) {
             $this->clienteNombre = $venta->cliente->nombre;
@@ -49,25 +39,18 @@ class EmitirDocumento extends Component
 
     public function getVentaProperty()
     {
-        return Venta::with(['items.producto', 'cliente', 'partePago'])
-            ->find($this->ventaId);
+        return Venta::with(['items.producto', 'cliente', 'partePago'])->find($this->ventaId);
     }
 
     public function getDolarProperty(): float
     {
-        return (float) (Configuracion::where('comercio_id', 1)->value('dolar_blue_hoy') ?? 0);
+        return (float)(Configuracion::where('comercio_id', 1)->value('dolar_blue_hoy') ?? 0);
     }
 
     public function agregarPago(): void
     {
         if (!$this->pagoMonto || (float)$this->pagoMonto <= 0) return;
-
-        $this->pagos[] = [
-            'metodo' => $this->pagoMetodo,
-            'monto'  => (float) $this->pagoMonto,
-            'moneda' => $this->pagoMoneda,
-        ];
-
+        $this->pagos[] = ['metodo' => $this->pagoMetodo, 'monto' => (float)$this->pagoMonto, 'moneda' => $this->pagoMoneda];
         $this->pagoMonto  = '';
         $this->pagoMoneda = 'ARS';
     }
@@ -80,11 +63,8 @@ class EmitirDocumento extends Component
 
     public function getTotalPagadoProperty(): float
     {
-        return collect($this->pagos)->sum(function ($p) {
-            if ($p['moneda'] === 'USD') {
-                return (float)$p['monto'] * $this->dolar;
-            }
-            return (float)$p['monto'];
+        return collect($this->pagos)->sum(function($p) {
+            return ($p['moneda'] === 'USD') ? (float)$p['monto'] * $this->dolar : (float)$p['monto'];
         });
     }
 
@@ -97,20 +77,34 @@ class EmitirDocumento extends Component
     {
         $service = new DocumentoService();
         $venta   = $this->venta;
+        $this->errorAfip = null;
 
         $doc = match($this->tipo) {
-            'ticket'  => $service->crearTicket($venta),
             'factura' => $service->crearFactura($venta, [
-                'nombre'     => $this->clienteNombre,
-                'dni'        => $this->clienteDni,
-                'domicilio'  => $this->clienteDomicilio,
+                'nombre'    => $this->clienteNombre,
+                'dni'       => $this->clienteDni,
+                'domicilio' => $this->clienteDomicilio,
             ]),
             'recibo'  => $service->crearRecibo($venta, $this->pagos, $this->observaciones),
             default   => $service->crearTicket($venta),
         };
 
+        // Si es factura, solicitar CAE a AFIP
+        if ($this->tipo === 'factura') {
+            try {
+                $afip   = new AfipService();
+                $result = $afip->generarCAE($doc);
+                $this->cae           = $result['cae'];
+                $this->caeVencimiento = $result['vencimiento'];
+            } catch (\Exception $e) {
+                // Si AFIP falla, el documento queda guardado sin CAE
+                // El usuario puede reintentar o emitir como ticket
+                $this->errorAfip = $e->getMessage();
+                \Log::error('Error AFIP: ' . $e->getMessage());
+            }
+        }
+
         $this->documentoId = $doc->id;
-        session()->flash('doc_emitido', $doc->id);
     }
 
     public function render()

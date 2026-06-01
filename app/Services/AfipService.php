@@ -1,358 +1,189 @@
 <?php
 namespace App\Services;
 
+use Afip;
 use App\Models\Comercio;
 use App\Models\Documento;
-use Exception;
-use RuntimeException;
-use SoapClient;
-use SoapFault;
+use Illuminate\Support\Facades\Log;
 
 /**
- * AfipService
+ * AfipService — Integración con ARCA (ex AFIP) para generación de CAE
  *
- * Integración con los Web Services de AFIP-ARCA para obtener el
- * CAE (Código de Autorización Electrónico) al emitir Facturas Electrónicas.
+ * Documentación oficial: https://afipsdk.github.io/afip.php/
  *
- * Flujo:
- *  1. WSAA — Autenticación: firma un TRA con el certificado digital y obtiene Token+Sign.
- *  2. WSFE — Facturación: llama a FECAESolicitar con los datos de la factura.
+ * REQUISITOS PREVIOS:
+ *   1. Certificado digital AFIP (.crt y .key) en storage/afip/
+ *   2. CUIT habilitado para Facturación Electrónica (WSFE)
+ *   3. Punto de venta dado de alta como "Web Services" en AFIP
  *
- * Ambientes disponibles via AFIP_AMBIENTE en .env:
- *   - homologacion (testing)
- *   - produccion
- *
- * Certificados requeridos (rutas configurables via .env):
- *   AFIP_CERT_PATH — ruta al certificado .pem emitido por AFIP
- *   AFIP_KEY_PATH  — ruta a la clave privada .key
- *   AFIP_CUIT      — CUIT del emisor sin guiones (ej: 20123456789)
+ * Para testing usar: $produccion = false (sandbox de AFIP)
+ * Para producción:   $produccion = true
  */
 class AfipService
 {
-    // ─── URLs por ambiente ────────────────────────────────────────────────────
-
-    private const WSAA_URLS = [
-        'homologacion' => 'https://wsaahomo.afip.gov.ar/ws/services/LoginCms?wsdl',
-        'produccion'   => 'https://wsaa.afip.gov.ar/ws/services/LoginCms?wsdl',
-    ];
-
-    private const WSFE_URLS = [
-        'homologacion' => 'https://wswhomo.afip.gov.ar/wsfev1/service.asmx?WSDL',
-        'produccion'   => 'https://servicios1.afip.gov.ar/wsfev1/service.asmx?WSDL',
-    ];
-
-    // Servicio de WSAA (nombre del servicio de facturación)
-    private const WSFE_SERVICE = 'wsfe';
-
-    // Tipo de factura C (Monotributista) = 11
-    // Tipo de factura A (Resp. Inscripto a Resp. Inscripto) = 1
-    // Tipo de factura B (Resp. Inscripto a Consumidor Final) = 6
-    private const CBTE_TIPO_FACTURA_C = 11;
-
-    private string $ambiente;
-    private string $certPath;
-    private string $keyPath;
-    private string $cuit;
-    private string $cacheDir;
+    private $afip;
+    private Comercio $comercio;
 
     public function __construct()
     {
-        $this->ambiente  = config('afip.ambiente', 'homologacion');
-        $this->certPath  = base_path(config('afip.cert_path', 'storage/app/afip/cert.pem'));
-        $this->keyPath   = base_path(config('afip.key_path',  'storage/app/afip/key.pem'));
-        $this->cuit      = config('afip.cuit', '');
-        $this->cacheDir  = storage_path('app/afip');
+        $this->comercio = Comercio::find(1);
 
-        // Crear directorio de caché si no existe
-        if (!is_dir($this->cacheDir)) {
-            mkdir($this->cacheDir, 0755, true);
-        }
+        $this->afip = new Afip([
+            // CUIT del emisor (sin guiones)
+            'CUIT' => (int) str_replace(['-', '.'], '', $this->comercio->cuit ?? '20347359476'),
+
+            // true = producción real, false = homologación (testing)
+            'production' => config('afip.produccion', false),
+
+            // Ruta al certificado digital (.crt)
+            'cert' => storage_path('afip/certificado.crt'),
+
+            // Ruta a la clave privada (.key)
+            'key'  => storage_path('afip/clave_privada.key'),
+
+            // Directorio para archivos temporales de AFIP
+            'res_folder' => storage_path('afip/'),
+        ]);
     }
 
-    // ─── Método principal ─────────────────────────────────────────────────────
-
     /**
-     * Solicita el CAE a AFIP-ARCA para un documento de tipo factura.
-     * Devuelve un array con ['cae', 'cae_vto', 'respuesta_raw'].
+     * Genera el CAE para una Factura C.
+     * Llama al Web Service WSFE de AFIP.
      *
-     * @throws RuntimeException si hay error de comunicación o el CUIT/cert no están configurados.
+     * @param  Documento $documento  El documento ya creado en la BD
+     * @return array ['cae' => '...', 'vencimiento' => '...']
+     * @throws \Exception si AFIP rechaza la solicitud
      */
-    public function solicitarCAE(Documento $doc, Comercio $comercio): array
+    public function generarCAE(Documento $documento): array
     {
-        $this->validarConfiguracion();
+        // Obtener el último número de comprobante autorizado por AFIP
+        $ultimoNro = $this->afip->ElectronicBilling->GetLastVoucher(
+            (int) $this->comercio->punto_venta,
+            11  // Tipo 11 = Factura C
+        );
 
-        // Obtener Token + Sign via WSAA
-        ['token' => $token, 'sign' => $sign] = $this->obtenerTokenSign();
+        $nroComprobante = $ultimoNro + 1;
 
-        $cuit       = $this->cuit ?: preg_replace('/\D/', '', $comercio->cuit ?? '');
-        $puntoVenta = intval($comercio->punto_venta ?? 1);
-        $nroComprobante = intval(explode('-', $doc->numero)[1] ?? 1);
+        // Armar el array de ítems para AFIP
+        $items = collect($documento->items)->map(fn($item, $i) => [
+            'Id'          => $i + 1,
+            'Ds'          => substr($item['nombre'], 0, 200), // máx 200 chars
+            'Qty'         => (float)($item['cantidad'] ?? 1),
+            'Umed'        => 7,           // 7 = Unidades
+            'PrecioUnitario' => round((float)($item['precio_unit'] ?? 0), 2),
+            'BonificacionPorcentaje' => 0,
+            'ImpBonificacion' => 0,
+            'Subtotal'    => round((float)($item['subtotal'] ?? $item['precio_ars'] ?? 0), 2),
+        ])->toArray();
 
-        // Construir ítems del comprobante
-        $importeTotal = (float) $doc->total;
-        $importeNeto  = $importeTotal; // Factura C: todo es neto sin IVA discriminado
+        // Datos del receptor
+        $datosCliente = null;
+        if ($documento->observaciones) {
+            $datosCliente = json_decode($documento->observaciones, true);
+        }
 
-        $cbteAsoc = []; // No hay comprobantes asociados para facturas C nuevas
+        $data = [
+            // Tipo de comprobante: 11 = Factura C
+            'CantReg'     => 1,
+            'PtoVta'      => (int) $this->comercio->punto_venta,
+            'CbteTipo'    => 11,
 
-        $cbteFch = $doc->emitido_en->format('Ymd');
+            // Concepto: 1=Productos, 2=Servicios, 3=Productos y Servicios
+            'Concepto'    => 1,
 
-        // Armar request para FECAESolicitar
-        $request = [
-            'Auth' => [
-                'Token' => $token,
-                'Sign'  => $sign,
-                'Cuit'  => $cuit,
-            ],
-            'FeCAEReq' => [
-                'FeCabReq' => [
-                    'CantReg'  => 1,
-                    'PtoVta'   => $puntoVenta,
-                    'CbteTipo' => self::CBTE_TIPO_FACTURA_C,
-                ],
-                'FeDetReq' => [
-                    'FECAEDetRequest' => [
-                        'Concepto'    => 1, // 1=Productos, 2=Servicios, 3=Productos y Servicios
-                        'DocTipo'     => $this->tipoDoc($doc),
-                        'DocNro'      => $this->nroDoc($doc),
-                        'CbteDesde'   => $nroComprobante,
-                        'CbteHasta'   => $nroComprobante,
-                        'CbteFch'     => $cbteFch,
-                        'ImpTotal'    => $importeTotal,
-                        'ImpTotConc'  => 0,
-                        'ImpNeto'     => $importeNeto,
-                        'ImpOpEx'     => 0,
-                        'ImpIVA'      => 0,
-                        'ImpTrib'     => 0,
-                        'MonId'       => 'PES', // Pesos argentinos
-                        'MonCotiz'    => 1,
-                    ],
-                ],
-            ],
+            // Condición IVA del receptor
+            // 5 = Consumidor Final, 3 = Exento
+            'DocTipo'     => $datosCliente['dni'] ?? null ? 96 : 99, // 96=DNI, 99=Consumidor Final
+            'DocNro'      => $datosCliente['dni'] ? preg_replace('/\D/', '', $datosCliente['dni']) : 0,
+
+            // Numeración
+            'CbteDesde'   => $nroComprobante,
+            'CbteHasta'   => $nroComprobante,
+            'CbteFch'     => (int) now()->format('Ymd'),
+
+            // Importes
+            'ImpTotal'    => round((float)$documento->total, 2),
+            'ImpTotConc'  => 0,    // No gravado
+            'ImpNeto'     => round((float)$documento->total, 2),
+            'ImpOpEx'     => 0,    // Exento
+            'ImpIVA'      => 0,    // Factura C no discrimina IVA
+            'ImpTrib'     => 0,    // Otros tributos
+
+            // Moneda
+            'MonId'       => 'PES',   // Pesos argentinos
+            'MonCotiz'    => 1,
+
+            // Ítems (opcional pero recomendado)
+            'ItmDet'      => $items,
         ];
 
-        // Llamar a WSFE
-        try {
-            $client   = new SoapClient(self::WSFE_URLS[$this->ambiente], [
-                'exceptions' => true,
-                'trace'      => true,
-            ]);
-            $response = $client->FECAESolicitar($request);
-        } catch (SoapFault $e) {
-            throw new RuntimeException('Error SOAP WSFE: ' . $e->getMessage(), 0, $e);
+        // Llamar al Web Service de AFIP
+        $resultado = $this->afip->ElectronicBilling->CreateVoucher($data);
+
+        if (!isset($resultado['CAE'])) {
+            $error = $resultado['Errors'][0]['Msg'] ?? 'Error desconocido de AFIP';
+            Log::error('AFIP error al generar CAE', ['resultado' => $resultado, 'documento_id' => $documento->id]);
+            throw new \Exception("AFIP rechazó la solicitud: {$error}");
         }
 
-        $resultado = $response->FECAESolicitarResult ?? null;
+        $cae         = $resultado['CAE'];
+        $vencimiento = $resultado['CAEFchVto']; // Formato AAAAMMDD
 
-        // Verificar errores de negocio
-        $this->verificarErrores($resultado);
+        // Formatear fecha de vencimiento
+        $fechaVto = \Carbon\Carbon::createFromFormat('Ymd', $vencimiento)->format('d/m/Y');
 
-        $detalle = $resultado->FeDetResp->FECAEDetResponse ?? null;
+        // Actualizar el documento con los datos del CAE
+        $documento->update([
+            'numero'       => str_pad($this->comercio->punto_venta, 4, '0', STR_PAD_LEFT)
+                            . '-'
+                            . str_pad($nroComprobante, 8, '0', STR_PAD_LEFT),
+            'observaciones'=> json_encode(array_merge(
+                json_decode($documento->observaciones ?? '{}', true) ?? [],
+                [
+                    'cae'            => $cae,
+                    'cae_vencimiento'=> $fechaVto,
+                    'nro_comprobante'=> $nroComprobante,
+                ]
+            )),
+        ]);
 
-        if (!$detalle || ($detalle->Resultado ?? '') !== 'A') {
-            $obs = collect((array)($detalle->Observaciones->Obs ?? []))
-                ->map(fn($o) => "[{$o->Code}] {$o->Msg}")
-                ->implode(' | ');
-            throw new RuntimeException('AFIP rechazó la factura: ' . ($obs ?: 'sin detalle'));
-        }
+        // Actualizar el contador del comercio
+        $this->comercio->update(['ultimo_nro_factura' => $nroComprobante]);
+
+        Log::info("CAE generado correctamente: {$cae} para doc #{$documento->id}");
 
         return [
-            'cae'          => $detalle->CAE,
-            'cae_vto'      => \Carbon\Carbon::createFromFormat('Ymd', $detalle->CAEFchVto)->toDateString(),
-            'respuesta_raw' => json_encode($response, JSON_UNESCAPED_UNICODE),
+            'cae'            => $cae,
+            'vencimiento'    => $fechaVto,
+            'nro_comprobante'=> $nroComprobante,
         ];
     }
 
-    // ─── WSAA: Token + Sign ───────────────────────────────────────────────────
-
     /**
-     * Obtiene el Token+Sign del WSAA.
-     * Usa caché de 12 horas para no re-autenticar en cada factura.
+     * Verifica si los servicios de AFIP están disponibles.
+     * Útil para mostrar un mensaje antes de intentar facturar.
      */
-    private function obtenerTokenSign(): array
+    public function verificarServicio(): bool
     {
-        $cacheFile = $this->cacheDir . '/ta_' . $this->ambiente . '.json';
-
-        // Usar caché si aún es válida (vence 10 min antes para evitar borde)
-        if (file_exists($cacheFile)) {
-            $cached = json_decode(file_get_contents($cacheFile), true);
-            if (isset($cached['expira_en']) && time() < ($cached['expira_en'] - 600)) {
-                return ['token' => $cached['token'], 'sign' => $cached['sign']];
-            }
-        }
-
-        // Generar nuevo TRA y firmarlo
-        $tra  = $this->generarTRA();
-        $cms  = $this->firmarTRA($tra);
-
-        // Llamar a WSAA
         try {
-            $client   = new SoapClient(self::WSAA_URLS[$this->ambiente], ['exceptions' => true]);
-            $response = $client->loginCms(['in0' => $cms]);
-        } catch (SoapFault $e) {
-            throw new RuntimeException('Error WSAA: ' . $e->getMessage(), 0, $e);
-        }
-
-        $xml = simplexml_load_string($response->loginCmsReturn);
-        if (!$xml) {
-            throw new RuntimeException('WSAA devolvió una respuesta inválida.');
-        }
-
-        $token    = (string) $xml->credentials->token;
-        $sign     = (string) $xml->credentials->sign;
-        $expiraEn = strtotime((string) $xml->header->expirationTime);
-
-        // Guardar caché
-        file_put_contents($cacheFile, json_encode([
-            'token'     => $token,
-            'sign'      => $sign,
-            'expira_en' => $expiraEn,
-        ]));
-
-        return ['token' => $token, 'sign' => $sign];
-    }
-
-    /**
-     * Genera el XML del Ticket de Requerimiento de Acceso (TRA).
-     */
-    private function generarTRA(): string
-    {
-        $ahora      = new \DateTime('now', new \DateTimeZone('UTC'));
-        $desde      = clone $ahora;
-        $hasta      = clone $ahora;
-        $desde->modify('-10 minutes');
-        $hasta->modify('+12 hours');
-
-        $uniqueId   = time();
-
-        return '<?xml version="1.0" encoding="UTF-8"?>'
-            . '<loginTicketRequest version="1.0">'
-            .   '<header>'
-            .     '<uniqueId>' . $uniqueId . '</uniqueId>'
-            .     '<generationTime>' . $desde->format('c') . '</generationTime>'
-            .     '<expirationTime>' . $hasta->format('c') . '</expirationTime>'
-            .   '</header>'
-            .   '<service>' . self::WSFE_SERVICE . '</service>'
-            . '</loginTicketRequest>';
-    }
-
-    /**
-     * Firma el TRA con el certificado digital y la clave privada.
-     * Devuelve el CMS en Base64 (formato esperado por WSAA).
-     */
-    private function firmarTRA(string $tra): string
-    {
-        if (!file_exists($this->certPath)) {
-            throw new RuntimeException("Certificado AFIP no encontrado en: {$this->certPath}");
-        }
-        if (!file_exists($this->keyPath)) {
-            throw new RuntimeException("Clave privada AFIP no encontrada en: {$this->keyPath}");
-        }
-
-        $cert    = file_get_contents($this->certPath);
-        $key     = file_get_contents($this->keyPath);
-        $signed  = '';
-
-        if (!openssl_pkcs7_sign(
-            tempnam(sys_get_temp_dir(), 'tra_') . '.xml',
-            tempnam(sys_get_temp_dir(), 'cms_') . '.pem',
-            $cert,
-            [$key, ''],
-            [],
-            PKCS7_BINARY | PKCS7_DETACHED,
-            ''
-        )) {
-            // Alternativa usando openssl_sign directamente para compatibilidad
-            return $this->firmarTRAAlternativo($tra, $cert, $key);
-        }
-
-        return $signed;
-    }
-
-    /**
-     * Firma el TRA usando openssl_pkcs7_sign con archivos temporales.
-     */
-    private function firmarTRAAlternativo(string $tra, string $cert, string $key): string
-    {
-        $tmpTra = tempnam(sys_get_temp_dir(), 'afip_tra_');
-        $tmpOut = tempnam(sys_get_temp_dir(), 'afip_cms_');
-
-        try {
-            file_put_contents($tmpTra, $tra);
-
-            $certResource = openssl_x509_read($cert);
-            $keyResource  = openssl_pkey_get_private($key);
-
-            if (!$certResource || !$keyResource) {
-                throw new RuntimeException('No se pudo leer el certificado o la clave privada AFIP.');
-            }
-
-            $ok = openssl_pkcs7_sign(
-                $tmpTra,
-                $tmpOut,
-                $certResource,
-                $keyResource,
-                [],
-                PKCS7_BINARY | PKCS7_DETACHED
-            );
-
-            if (!$ok) {
-                throw new RuntimeException('Error al firmar el TRA: ' . openssl_error_string());
-            }
-
-            // Extraer el contenido CMS (la parte después de los encabezados MIME)
-            $content = file_get_contents($tmpOut);
-            $parts   = explode("\n\n", $content);
-            // El CMS está en la última sección
-            $cms = end($parts);
-            // Limpiar saltos de línea para Base64 limpio
-            return base64_encode(base64_decode(str_replace(["\n", "\r", ' '], '', $cms)));
-
-        } finally {
-            @unlink($tmpTra);
-            @unlink($tmpOut);
-        }
-    }
-
-    // ─── Helpers ──────────────────────────────────────────────────────────────
-
-    private function validarConfiguracion(): void
-    {
-        if (empty($this->cuit)) {
-            throw new RuntimeException('AFIP_CUIT no está configurado en .env');
+            $estado = $this->afip->ElectronicBilling->GetServerStatus();
+            return ($estado['AppServer'] === 'OK' && $estado['DbServer'] === 'OK');
+        } catch (\Exception $e) {
+            Log::warning('AFIP no disponible: ' . $e->getMessage());
+            return false;
         }
     }
 
     /**
-     * Tipo de documento del receptor.
-     * 99 = Consumidor Final (sin documento), 96 = DNI, 80 = CUIT
+     * Consulta un comprobante ya emitido por número.
+     * Útil para verificar el estado de una factura.
      */
-    private function tipoDoc(Documento $doc): int
+    public function consultarComprobante(int $nro): array
     {
-        if (!$doc->cliente) {
-            return 99; // Consumidor final
-        }
-        $cliente = $doc->cliente;
-        if (!empty($cliente->cuit)) return 80;
-        if (!empty($cliente->dni))  return 96;
-        return 99;
-    }
-
-    private function nroDoc(Documento $doc): string
-    {
-        if (!$doc->cliente) return '0';
-        $cliente = $doc->cliente;
-        if (!empty($cliente->cuit)) return preg_replace('/\D/', '', $cliente->cuit);
-        if (!empty($cliente->dni))  return preg_replace('/\D/', '', $cliente->dni);
-        return '0';
-    }
-
-    private function verificarErrores(mixed $resultado): void
-    {
-        $errors = $resultado->Errors->Err ?? null;
-        if ($errors) {
-            $lista = is_array($errors) ? $errors : [$errors];
-            $msg   = collect($lista)->map(fn($e) => "[{$e->Code}] {$e->Msg}")->implode(' | ');
-            throw new RuntimeException('AFIP devolvió error: ' . $msg);
-        }
+        return $this->afip->ElectronicBilling->GetVoucherInfo(
+            $nro,
+            (int) $this->comercio->punto_venta,
+            11 // Factura C
+        );
     }
 }

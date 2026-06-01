@@ -157,7 +157,7 @@ input, select, textarea { font-family: inherit; }
 .bs-dolar-time   { font-size: .7rem; color: #7A8FA6; margin-top: 2px; }
 
 /* ── Bloques dashboard ── */
-.bs-grid-bloques  { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: .75rem; margin-bottom: 1.25rem; }
+.bs-grid-bloques  { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: .75rem; margin-bottom: 1.25rem; }
 .bs-bloque {
     background: var(--bs-white); border: 1.5px solid var(--bs-gray-border);
     border-radius: var(--bs-radius-xl); padding: 1.25rem 1rem;

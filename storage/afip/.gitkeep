@@ -1,0 +1,2 @@
+# Carpeta para certificados AFIP
+# Los archivos .crt y .key NO se suben a GitHub (están en .gitignore)

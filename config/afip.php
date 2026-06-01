@@ -1,30 +1,25 @@
 <?php
-
+/**
+ * Configuración de AFIP/ARCA para BE Store
+ *
+ * Para pasar a producción:
+ *   1. Cambiar 'produccion' => true
+ *   2. Reemplazar certificados en storage/afip/ con los definitivos
+ *   3. Dar de alta el punto de venta en AFIP como Web Service
+ */
 return [
-    /*
-    |--------------------------------------------------------------------------
-    | Ambiente AFIP-ARCA
-    |--------------------------------------------------------------------------
-    | Valores: 'homologacion' (testing) | 'produccion'
-    */
-    'ambiente' => env('AFIP_AMBIENTE', 'homologacion'),
+    // false = homologación (testing), true = producción real
+    'produccion' => env('AFIP_PRODUCCION', false),
 
-    /*
-    |--------------------------------------------------------------------------
-    | Certificado digital y clave privada
-    |--------------------------------------------------------------------------
-    | Rutas relativas a la raíz del proyecto.
-    | Generarlos en: https://auth.afip.gob.ar/contribuyente_/login.xhtml
-    | Ubicarlos en: storage/app/afip/  (fuera del control de versiones)
-    */
-    'cert_path' => env('AFIP_CERT_PATH', 'storage/app/afip/cert.pem'),
-    'key_path'  => env('AFIP_KEY_PATH',  'storage/app/afip/key.pem'),
+    // CUIT del emisor
+    'cuit' => env('AFIP_CUIT', '20347359476'),
 
-    /*
-    |--------------------------------------------------------------------------
-    | CUIT del emisor
-    |--------------------------------------------------------------------------
-    | CUIT sin guiones. Ej: 20123456789
-    */
-    'cuit' => env('AFIP_CUIT', ''),
+    // Punto de venta (4 dígitos)
+    'punto_venta' => env('AFIP_PUNTO_VENTA', '1'),
+
+    // Ingresos brutos
+    'ingresos_brutos' => env('AFIP_IIBB', '286174060'),
+
+    // Fecha de inicio de actividades
+    'inicio_actividades' => env('AFIP_INICIO', '01/06/2021'),
 ];

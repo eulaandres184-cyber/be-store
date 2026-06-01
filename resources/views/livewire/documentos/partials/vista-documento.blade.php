@@ -133,6 +133,27 @@ $comercio = $doc->comercio;
     </div>
     @endif
 
+    {{-- CAE (solo facturas) --}}
+    @if($doc->tipo === 'factura')
+    @php
+        $obs = json_decode($doc->observaciones ?? '{}', true);
+        $cae = $obs['cae'] ?? null;
+        $caeVto = $obs['cae_vencimiento'] ?? null;
+    @endphp
+    @if($cae)
+    <div style="padding:.75rem 1.5rem;border-top:1px solid var(--bs-gray-border);display:flex;justify-content:space-between;align-items:center;font-size:.75rem">
+        <div style="display:flex;align-items:center;gap:.5rem">
+            <span style="color:var(--bs-muted)">CAE N°:</span>
+            <strong>{{ $cae }}</strong>
+        </div>
+        <div><span style="color:var(--bs-muted)">Vto. CAE:</span> <strong>{{ $caeVto }}</strong></div>
+    </div>
+    @else
+    <div style="padding:.5rem 1.5rem;background:#FFF8E6;border-top:1px dashed #F5CBA7;font-size:.72rem;color:#9A6B00;text-align:center">
+        ⚠ Pendiente de autorización AFIP
+    </div>
+    @endif
+    @endif
     {{-- Pie --}}
     <div class="doc-footer">
         {{ $comercio->nombre }}
