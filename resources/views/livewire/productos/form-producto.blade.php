@@ -1,6 +1,9 @@
-<x-layouts.app title="{{ $modoEdicion ? 'Editar producto' : 'Nuevo producto' }}">
-<x-slot name="estilos">@vite(['resources/css/productos.css'])</x-slot>
-<x-slot name="scripts">@vite(['resources/js/productos.js'])</x-slot>
+@push('estilos')
+    @vite(['resources/css/productos.css'])
+@endpush
+@push('scripts')
+    @vite(['resources/js/productos.js'])
+@endpush
 
 @if(session('warning'))
     <div class="bs-alert-warning">⚠️ {{ session('warning') }}</div>
@@ -197,4 +200,4 @@
     </div>
 </div>
 
-</x-layouts.app>
+

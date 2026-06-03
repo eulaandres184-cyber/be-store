@@ -1,4 +1,4 @@
-<x-layouts.app title="Dashboard">
+@push('estilos')
 <style>
 .bs-grid-bloques {
     display: grid;
@@ -43,6 +43,7 @@
 .dolar-banner-val { font-size: 1.6rem; font-weight: 700; color: var(--bs-blue); }
 .dolar-banner-time { font-size: .7rem; color: #94A3B8; }
 </style>
+@endpush
 
 {{-- Banner dólar blue --}}
 <div class="dolar-banner">
@@ -126,4 +127,4 @@
         <div class="bs-bloque-sub">Ajustes</div>
     </a>
 </div>
-</x-layouts.app>
+

@@ -1,16 +1,20 @@
-<x-layouts.app title="Productos">
-<x-slot name="estilos">@vite(['resources/css/productos.css'])</x-slot>
-<x-slot name="scripts">@vite(['resources/js/productos.js'])</x-slot>
+<div>
+    @push('estilos')
+        @vite(['resources/css/productos.css'])
+    @endpush
+    @push('scripts')
+        @vite(['resources/js/productos.js'])
+    @endpush
 
-@if(session('success'))
-    <div class="bs-alert-success">✅ {{ session('success') }}</div>
-@endif
-@if(session('warning'))
-    <div class="bs-alert-warning">⚠️ {{ session('warning') }}</div>
-@endif
+    @if(session('success'))
+        <div class="bs-alert-success">✅ {{ session('success') }}</div>
+    @endif
+    @if(session('warning'))
+        <div class="bs-alert-warning">⚠️ {{ session('warning') }}</div>
+    @endif
 
-@php $esAdmin = (auth()->user()->rol ?? 'vendedor') === 'admin'; @endphp
-<div class="bs-page-title">
+    @php $esAdmin = (auth()->user()->rol ?? 'vendedor') === 'admin'; @endphp
+    <div class="bs-page-title">
     <span>📦 Productos</span>
     @if($esAdmin)
         <a href="{{ route('productos.nuevo') }}" class="bs-btn-black">+ Nuevo producto</a>
@@ -114,9 +118,8 @@
     </table>
 </div>
 
-{{-- Paginación --}}
-<div style="margin-top:.75rem">
-    {{ $productos->links() }}
+    {{-- Paginación --}}
+    <div style="margin-top:.75rem">
+        {{ $productos->links() }}
+    </div>
 </div>
-
-</x-layouts.app>
