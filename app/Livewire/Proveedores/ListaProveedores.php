@@ -1,69 +1,111 @@
 <?php
-
 namespace App\Livewire\Proveedores;
 
-use App\Models\Proveedor;
-use Illuminate\Support\Facades\Auth;
 use Livewire\Component;
-use Livewire\Attributes\Computed;
 use Livewire\WithPagination;
+use App\Models\Proveedor;
 
 class ListaProveedores extends Component
 {
     use WithPagination;
 
-    public string $busqueda = '';
-    public string $estado = 'activos';
+    public string $busqueda    = '';
+    public string $ordenarPor  = 'nombre';
+    public string $direccion   = 'asc';
+    public bool   $mostrarForm = false;
+    public ?int   $proveedorId = null;
+    public string $nombre      = '';
+    public string $contacto    = '';
+    public string $whatsapp    = '';
+    public string $notas       = '';
+    public bool   $activo      = true;
+    public bool   $modoEdicion = false;
 
-    protected $queryString = ['busqueda', 'estado'];
-    protected $paginationTheme = 'bootstrap';
-
-    #[Computed]
-    public function proveedores()
+    protected function rules(): array
     {
-        return Proveedor::where('comercio_id', $this->comercioId())
-            ->when(
-                $this->busqueda,
-                fn($q) =>
-                $q->where('nombre', 'like', "%{$this->busqueda}%")
-                    ->orWhere('contacto', 'like', "%{$this->busqueda}%")
-                    ->orWhere('whatsapp', 'like', "%{$this->busqueda}%")
-            )
-            ->when(
-                $this->estado === 'activos',
-                fn($q) =>
-                $q->where('activo', true)
-            )
-            ->when(
-                $this->estado === 'inactivos',
-                fn($q) =>
-                $q->where('activo', false)
-            )
-            ->orderBy('nombre')
-            ->paginate(15);
+        return [
+            'nombre'   => 'required|string|max:100',
+            'contacto' => 'nullable|string|max:150',
+            'whatsapp' => 'nullable|string|max:20',
+            'notas'    => 'nullable|string',
+        ];
     }
+    protected $messages = ['nombre.required' => 'El nombre es obligatorio.'];
 
-    public function updatingBusqueda(): void
+    public function ordenar(string $col): void
     {
-        $this->resetPage();
-    }
-
-    public function toggleActivo(int $proveedorId): void
-    {
-        $proveedor = Proveedor::find($proveedorId);
-        if ($proveedor && $proveedor->comercio_id === $this->comercioId()) {
-            $proveedor->update(['activo' => !$proveedor->activo]);
+        if ($this->ordenarPor === $col) {
+            $this->direccion = $this->direccion === 'asc' ? 'desc' : 'asc';
+        } else {
+            $this->ordenarPor = $col;
+            $this->direccion  = 'asc';
         }
     }
 
-    private function comercioId(): int
+    public function nuevo(): void
     {
-        return Auth::user()?->comercio_id ?? 1;
+        $this->reset(['proveedorId','nombre','contacto','whatsapp','notas']);
+        $this->activo      = true;
+        $this->modoEdicion = false;
+        $this->mostrarForm = true;
+    }
+
+    public function editar(int $id): void
+    {
+        $p = Proveedor::findOrFail($id);
+        $this->proveedorId = $id;
+        $this->nombre      = $p->nombre;
+        $this->contacto    = $p->contacto  ?? '';
+        $this->whatsapp    = $p->whatsapp  ?? '';
+        $this->notas       = $p->notas     ?? '';
+        $this->activo      = $p->activo;
+        $this->modoEdicion = true;
+        $this->mostrarForm = true;
+    }
+
+    public function guardar(): void
+    {
+        $this->validate();
+        $datos = [
+            'comercio_id' => 1,
+            'nombre'      => trim($this->nombre),
+            'contacto'    => trim($this->contacto) ?: null,
+            'whatsapp'    => trim($this->whatsapp)  ?: null,
+            'notas'       => trim($this->notas)     ?: null,
+            'activo'      => $this->activo,
+        ];
+        if ($this->modoEdicion) {
+            Proveedor::findOrFail($this->proveedorId)->update($datos);
+            session()->flash('success', 'Proveedor actualizado.');
+        } else {
+            Proveedor::create($datos);
+            session()->flash('success', 'Proveedor creado.');
+        }
+        $this->mostrarForm = false;
+        $this->reset(['proveedorId','nombre','contacto','whatsapp','notas']);
+    }
+
+    public function cancelar(): void
+    {
+        $this->mostrarForm = false;
+        $this->reset(['proveedorId','nombre','contacto','whatsapp','notas']);
+    }
+
+    public function toggleActivo(int $id): void
+    {
+        $p = Proveedor::findOrFail($id);
+        $p->update(['activo' => !$p->activo]);
     }
 
     public function render()
     {
-        return view('livewire.proveedores.lista-proveedores')
+        $proveedores = Proveedor::where('comercio_id', 1)
+            ->when($this->busqueda, fn($q) => $q->where('nombre', 'like', "%{$this->busqueda}%"))
+            ->withCount('compras')
+            ->orderBy($this->ordenarPor, $this->direccion)
+            ->paginate(20);
+
+        return view('livewire.proveedores.lista-proveedores', compact('proveedores'))
             ->layout('layouts.app', ['title' => 'Proveedores']);
     }
 }

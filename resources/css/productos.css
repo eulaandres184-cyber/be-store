@@ -95,13 +95,3 @@
 .precio-preview-item  { text-align: center; }
 .precio-preview-label { font-size: .68rem; color: var(--bs-muted); }
 .precio-preview-val   { font-size: .92rem; font-weight: 700; color: var(--bs-blue); }
-
-/* Columnas ordenables */
-.th-sort {
-    cursor: pointer;
-    user-select: none;
-    white-space: nowrap;
-    transition: var(--bs-transition);
-}
-.th-sort:hover { background: #2d2d45; }
-.th-icon { opacity: .4; font-size: .8rem; }

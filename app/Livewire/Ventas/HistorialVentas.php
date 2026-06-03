@@ -1,75 +1,86 @@
 <?php
-
 namespace App\Livewire\Ventas;
 
-use App\Models\Venta;
-use Illuminate\Support\Facades\Auth;
 use Livewire\Component;
-use Livewire\Attributes\Computed;
 use Livewire\WithPagination;
+use App\Models\Venta;
 
 class HistorialVentas extends Component
 {
     use WithPagination;
 
-    public string $desde = '';
-    public string $hasta = '';
-    public string $medioPago = '';
-    public string $ordenar = 'fecha_desc';
+    public string $desde      = '';
+    public string $hasta      = '';
+    public string $medioPago  = '';
+    public string $busqueda   = '';
+    public string $ordenarPor = 'fecha';
+    public string $direccion  = 'desc';
+    public ?int   $ventaDetalle = null;
 
-    protected $queryString = ['desde', 'hasta', 'medioPago', 'ordenar'];
-    protected $paginationTheme = 'bootstrap';
-
-    #[Computed]
-    public function ventas()
+    public function mount(): void
     {
-        return Venta::where('comercio_id', $this->comercioId())
-            ->when(
-                $this->desde,
-                fn($q) =>
-                $q->whereDate('fecha', '>=', $this->desde)
-            )
-            ->when(
-                $this->hasta,
-                fn($q) =>
-                $q->whereDate('fecha', '<=', $this->hasta)
-            )
-            ->when(
-                $this->medioPago,
-                fn($q) =>
-                $q->where('medio_pago', $this->medioPago)
-            )
-            ->with(['items' => fn($q) => $q->with('producto')])
-            ->when($this->ordenar === 'fecha_asc', fn($q) => $q->oldest('fecha'))
-            ->when($this->ordenar === 'fecha_desc', fn($q) => $q->latest('fecha'))
-            ->when($this->ordenar === 'monto_desc', fn($q) => $q->orderByDesc('total_ars'))
-            ->paginate(15);
+        $this->desde = now()->startOfMonth()->format('Y-m-d');
+        $this->hasta = now()->format('Y-m-d');
     }
 
-    public function limpiarFiltros(): void
+    public function ordenar(string $col): void
     {
-        $this->desde = '';
-        $this->hasta = '';
-        $this->medioPago = '';
-        $this->ordenar = 'fecha_desc';
+        if ($this->ordenarPor === $col) {
+            $this->direccion = $this->direccion === 'asc' ? 'desc' : 'asc';
+        } else {
+            $this->ordenarPor = $col;
+            $this->direccion  = 'desc';
+        }
         $this->resetPage();
     }
 
-    private function comercioId(): int
+    public function verDetalle(int $id): void
     {
-        return Auth::user()?->comercio_id ?? 1;
+        $this->ventaDetalle = $id;
+    }
+
+    public function cerrarDetalle(): void
+    {
+        $this->ventaDetalle = null;
+    }
+
+    public function getVentaDetalleDataProperty()
+    {
+        if (!$this->ventaDetalle) return null;
+        return Venta::with(['items.producto', 'cliente', 'usuario', 'partePago'])
+            ->find($this->ventaDetalle);
+    }
+
+    public function getTotalesProperty()
+    {
+        $q = Venta::where('comercio_id', 1)
+            ->when($this->desde,     fn($q) => $q->whereDate('fecha', '>=', $this->desde))
+            ->when($this->hasta,     fn($q) => $q->whereDate('fecha', '<=', $this->hasta))
+            ->when($this->medioPago, fn($q) => $q->where('medio_pago', $this->medioPago));
+
+        return [
+            'total'      => $q->sum('total_ars'),
+            'cantidad'   => $q->count(),
+            'promedio'   => $q->count() > 0 ? $q->sum('total_ars') / $q->count() : 0,
+        ];
     }
 
     public function render()
     {
-        $totalVentas = Venta::where('comercio_id', $this->comercioId())->sum('total_ars');
-        $ventasHoy = Venta::where('comercio_id', $this->comercioId())
-            ->whereDate('fecha', today())
-            ->sum('total_ars');
+        $ventas = Venta::where('comercio_id', 1)
+            ->with(['items', 'cliente', 'usuario'])
+            ->when($this->desde,     fn($q) => $q->whereDate('fecha', '>=', $this->desde))
+            ->when($this->hasta,     fn($q) => $q->whereDate('fecha', '<=', $this->hasta))
+            ->when($this->medioPago, fn($q) => $q->where('medio_pago', $this->medioPago))
+            ->when($this->busqueda,  fn($q) =>
+                $q->whereHas('cliente', fn($q) =>
+                    $q->where('nombre', 'like', "%{$this->busqueda}%")
+                )
+            )
+            ->orderBy($this->ordenarPor, $this->direccion)
+            ->paginate(20);
 
-        return view('livewire.ventas.historial-ventas', [
-            'totalVentas' => $totalVentas,
-            'ventasHoy' => $ventasHoy,
-        ])->layout('layouts.app', ['title' => 'Ventas']);
+        return view('livewire.ventas.historial-ventas', compact('ventas'))
+            ->layout('layouts.app', ['title' => 'Historial de ventas']);
     }
 }

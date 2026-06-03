@@ -22,11 +22,14 @@ class BeStoreSeeder extends Seeder
 
         // 2. Usuario admin
         DB::table('users')->insert([
-            'name'       => 'Administrador',
-            'email'      => 'admin@bestore.com',
-            'password'   => Hash::make('BeStore2024'),
-            'created_at' => now(),
-            'updated_at' => now(),
+            'name'            => 'Administrador',
+            'email'           => 'admin@bestore.com',
+            'password'        => Hash::make('BeStore2024'),
+            'rol'             => 'admin',
+            'comercio_id'     => $comercioId,
+            'email_verified_at' => now(),
+            'created_at'      => now(),
+            'updated_at'      => now(),
         ]);
 
         // 3. Configuración inicial
@@ -77,11 +80,36 @@ class BeStoreSeeder extends Seeder
 
         // 5. Modelos de celular más comunes
         $marcas = [
-            'iPhone'   => ['11', '12', '12 Pro', '13', '13 Pro', '13 Pro Max',
-                           '14', '14 Pro', '14 Pro Max', '15', '15 Pro', '15 Pro Max',
-                           '16', '16 Pro', '16 Pro Max', '16e', '17'],
-            'Samsung'  => ['A15', 'A25', 'A35', 'A55', 'S23', 'S24', 'S24 Ultra',
-                           'S25', 'S25 Ultra'],
+            'iPhone'   => [
+                '11',
+                '12',
+                '12 Pro',
+                '13',
+                '13 Pro',
+                '13 Pro Max',
+                '14',
+                '14 Pro',
+                '14 Pro Max',
+                '15',
+                '15 Pro',
+                '15 Pro Max',
+                '16',
+                '16 Pro',
+                '16 Pro Max',
+                '16e',
+                '17'
+            ],
+            'Samsung'  => [
+                'A15',
+                'A25',
+                'A35',
+                'A55',
+                'S23',
+                'S24',
+                'S24 Ultra',
+                'S25',
+                'S25 Ultra'
+            ],
             'Motorola' => ['G54', 'G84', 'G85', 'Edge 50', 'Edge 50 Pro'],
             'Xiaomi'   => ['Redmi 13', 'Redmi Note 13', 'Redmi Note 13 Pro', '14C'],
         ];

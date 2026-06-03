@@ -11,8 +11,8 @@ use Illuminate\Support\Facades\Auth;
 
 class Dashboard extends Component
 {
-    protected $layout = 'layouts.app';
-    protected $layoutData = ['title' => 'Dashboard'];
+    protected string $layout = 'layouts.app';
+    protected array $layoutData = ['title' => 'Dashboard'];
 
     public function render()
     {
