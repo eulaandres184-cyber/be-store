@@ -36,6 +36,16 @@
 .btn-del     { padding: 3px 10px; border-radius: var(--bs-radius-sm); font-size: .75rem; background: var(--bs-danger-bg); color: var(--bs-danger-text); border: 1px solid #FECACA; cursor: pointer; transition: var(--bs-transition); }
 .btn-del:hover { background: var(--bs-danger-text); color: var(--bs-white); }
 
+/* Headers de tabla ordenables */
+.bs-table thead th {
+    transition: var(--bs-transition);
+}
+.bs-table thead th[style*="cursor:pointer"]:hover {
+    background-color: var(--bs-gray-light);
+    color: var(--bs-blue);
+    font-weight: 600;
+}
+
 /* Badge de stock */
 .stock-ok   { color: var(--bs-success-text); font-weight: 600; }
 .stock-low  { color: var(--bs-warning-text); font-weight: 600; }

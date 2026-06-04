@@ -33,6 +33,7 @@ Pasos detallados para publicar **BeStore** en Railway Hosting.
 4. Anota los datos de conexión que aparecen
 
 **Datos importantes que necesitarás:**
+
 - Host (Hostname)
 - Port (Puerto)
 - Database
@@ -95,12 +96,12 @@ REDIS_PORT=6379
 
 ### ⚠️ Variables Críticas
 
-| Variable | Valor |
-|----------|-------|
-| `APP_KEY` | Genera con `php artisan key:generate` localmente |
-| `DB_HOST` | IP/Hostname de Railway MySQL |
-| `DB_PASSWORD` | Contraseña MySQL segura |
-| `AFIP_AMBIENTE` | `produccion` o `testing` |
+| Variable        | Valor                                            |
+| --------------- | ------------------------------------------------ |
+| `APP_KEY`       | Genera con `php artisan key:generate` localmente |
+| `DB_HOST`       | IP/Hostname de Railway MySQL                     |
+| `DB_PASSWORD`   | Contraseña MySQL segura                          |
+| `AFIP_AMBIENTE` | `produccion` o `testing`                         |
 
 ---
 
@@ -109,23 +110,24 @@ REDIS_PORT=6379
 Si usas integración AFIP en producción:
 
 1. Copia tus archivos:
-   - `cert.pem` 
-   - `key.pem`
+    - `cert.pem`
+    - `key.pem`
 
 2. En Railway, ve a **Variables** del servicio Laravel
 3. Agrega como variables de texto los certificados:
-   ```
-   AFIP_CERT_CONTENT=<contenido del cert.pem>
-   AFIP_KEY_CONTENT=<contenido del key.pem>
-   ```
+
+    ```
+    AFIP_CERT_CONTENT=<contenido del cert.pem>
+    AFIP_KEY_CONTENT=<contenido del key.pem>
+    ```
 
 4. En `app/Providers/AppServiceProvider.php`, agrega al boot():
-   ```php
-   if (env('AFIP_CERT_CONTENT')) {
-       Storage::put('afip/cert.pem', env('AFIP_CERT_CONTENT'));
-       Storage::put('afip/key.pem', env('AFIP_KEY_CONTENT'));
-   }
-   ```
+    ```php
+    if (env('AFIP_CERT_CONTENT')) {
+        Storage::put('afip/cert.pem', env('AFIP_CERT_CONTENT'));
+        Storage::put('afip/key.pem', env('AFIP_KEY_CONTENT'));
+    }
+    ```
 
 ---
 
@@ -135,19 +137,19 @@ Railway detecta Laravel automáticamente, pero asegúrate:
 
 1. En el servicio Laravel, ve a **"Settings"**
 2. Verifica el **Start Command**:
-   ```
-   php artisan serve
-   ```
-   
+    ```
+    php artisan serve
+    ```
 3. O mejor, usa Supervisor con:
-   ```
-   supervisord -c /etc/supervisor/conf.d/supervisord.conf
-   ```
+
+    ```
+    supervisord -c /etc/supervisor/conf.d/supervisord.conf
+    ```
 
 4. En **Build Command**, debe ejecutar:
-   ```
-   npm install && npm run build && php artisan migrate --force
-   ```
+    ```
+    npm install && npm run build && php artisan migrate --force
+    ```
 
 ---
 
@@ -158,6 +160,7 @@ Railway detecta Laravel automáticamente, pero asegúrate:
 3. Espera a que se complete (5-10 minutos típicamente)
 
 **Monitorea el Deploy:**
+
 - Ve a la pestaña **"Deployments"**
 - Verifica que no haya errores
 - Revisa los logs si falla
@@ -172,6 +175,7 @@ Railway detecta Laravel automáticamente, pero asegúrate:
 4. Railway genera un certificado SSL automático
 
 **En tu proveedor de dominio (GoDaddy, Namecheap, etc.):**
+
 - Actualiza los DNS records hacia Railway
 - Espera propagación (15-30 minutos)
 
@@ -182,9 +186,9 @@ Railway detecta Laravel automáticamente, pero asegúrate:
 1. Accede a `https://tudominio.com`
 2. Verifica login
 3. Prueba operaciones básicas:
-   - Listar productos
-   - Crear venta
-   - Generar reportes
+    - Listar productos
+    - Crear venta
+    - Generar reportes
 4. Revisa logs: **Deployments → View Logs**
 
 ---
@@ -196,12 +200,14 @@ Railway detecta Laravel automáticamente, pero asegúrate:
 **Causa:** Base de datos no migrada
 
 **Solución:**
+
 ```bash
 # En tu computadora local
 php artisan migrate --force --env=production
 ```
 
 O en Railway, ejecuta:
+
 ```bash
 php artisan migrate --force
 ```
@@ -213,6 +219,7 @@ php artisan migrate --force
 **Causa:** Vendor no instalado correctamente
 
 **Solución:**
+
 1. En Railway, **Rebuild** el proyecto
 2. Verifica que `composer.json` esté en la raíz
 
@@ -223,6 +230,7 @@ php artisan migrate --force
 **Causa:** Vite no compiló
 
 **Solución:**
+
 ```bash
 # Localmente
 npm run build
@@ -240,6 +248,7 @@ Luego Railway rebuildeará automáticamente.
 **Causa:** Aplicación crasheó
 
 **Solución:**
+
 1. Revisa los logs en Railway
 2. Verifica variables de entorno
 3. Comprueba base de datos está conectada
@@ -261,12 +270,14 @@ Ahora cada push a `produccion` triggereará un deploy.
 ## 📊 Monitoreo en Producción
 
 ### Logs
+
 ```bash
 # Desde Railway UI
 Deployments → View Logs
 ```
 
 ### Métricas
+
 - CPU Usage
 - Memory Usage
 - Request Rate
@@ -281,24 +292,25 @@ Monitorea desde el dashboard de Railway.
 Crea un workflow GitHub Actions para auto-deploy (opcional):
 
 **`.github/workflows/deploy.yml`**
+
 ```yaml
 name: Deploy to Railway
 
 on:
-  push:
-    branches: [produccion]
+    push:
+        branches: [produccion]
 
 jobs:
-  deploy:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - name: Deploy to Railway
-        run: |
-          npm i -g @railway/cli
-          railway up --service bestore-app
-        env:
-          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+    deploy:
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v3
+            - name: Deploy to Railway
+              run: |
+                  npm i -g @railway/cli
+                  railway up --service bestore-app
+              env:
+                  RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
 ```
 
 ---
@@ -330,6 +342,7 @@ Si algo falla:
 4. Contacta al soporte de Railway
 
 **Documentación útil:**
+
 - [Railway Docs](https://docs.railway.app)
 - [Laravel on Railway](https://docs.railway.app/guides/laravel)
 - [MySQL on Railway](https://docs.railway.app/databases/mysql)

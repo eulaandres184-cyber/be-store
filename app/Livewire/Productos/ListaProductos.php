@@ -15,12 +15,29 @@ class ListaProductos extends Component
     public string $categoriaFiltro = '';
     public string $estadoFiltro    = 'activos';
     public string $ordenar         = 'nombre';
+    public string $ordenDir        = 'asc';
     public bool   $escaneando      = false;
 
-    protected $queryString = ['busqueda', 'categoriaFiltro', 'estadoFiltro'];
+    protected $queryString = ['busqueda', 'categoriaFiltro', 'estadoFiltro', 'ordenar', 'ordenDir'];
 
     public function updatingBusqueda()  { $this->resetPage(); }
     public function updatingCategoria() { $this->resetPage(); }
+
+    /**
+     * Cambiar orden de la columna
+     */
+    public function cambiarOrden(string $columna): void
+    {
+        if ($this->ordenar === $columna) {
+            // Si ya está ordenado por esta columna, alternar dirección
+            $this->ordenDir = $this->ordenDir === 'asc' ? 'desc' : 'asc';
+        } else {
+            // Cambiar a nueva columna con orden ascendente
+            $this->ordenar = $columna;
+            $this->ordenDir = 'asc';
+        }
+        $this->resetPage();
+    }
 
     public function getCategoriasProperty()
     {
@@ -50,7 +67,7 @@ class ListaProductos extends Component
             ->when($this->estadoFiltro === 'inactivos', fn($q) => $q->where('activo', false))
             ->when($this->estadoFiltro === 'bajo_stock',fn($q) => $q->bajoMinimo()->where('activo', true))
             ->with('categoria')
-            ->orderBy($this->ordenar)
+            ->orderBy($this->ordenar, $this->ordenDir)
             ->paginate(20);
 
         return view('livewire.productos.lista-productos', compact('productos'))

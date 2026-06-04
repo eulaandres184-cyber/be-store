@@ -34,12 +34,7 @@
             <option value="{{ $cat->id }}">{{ $cat->nombre }}</option>
         @endforeach
     </select>
-    <select class="bs-select" wire:model.live="ordenar" style="width:auto;min-width:130px">
-        <option value="nombre">Nombre A-Z</option>
-        <option value="precio_efectivo">Precio</option>
-        <option value="stock_actual">Stock</option>
-        <option value="created_at">Más nuevos</option>
-    </select>
+
 </div>
 
 {{-- Tabs de estado --}}
@@ -55,11 +50,31 @@
     <table class="bs-table">
         <thead>
             <tr>
-                <th>Código</th>
-                <th>Nombre</th>
+                <th style="cursor:pointer;user-select:none" wire:click="cambiarOrden('codigo_interno')">
+                    Código
+                    @if($ordenar === 'codigo_interno')
+                        <span style="margin-left:5px">{{ $ordenDir === 'asc' ? '↑' : '↓' }}</span>
+                    @endif
+                </th>
+                <th style="cursor:pointer;user-select:none" wire:click="cambiarOrden('nombre')">
+                    Nombre
+                    @if($ordenar === 'nombre')
+                        <span style="margin-left:5px">{{ $ordenDir === 'asc' ? '↑' : '↓' }}</span>
+                    @endif
+                </th>
                 <th>Categoría</th>
-                <th>Precio efectivo</th>
-                <th>Stock</th>
+                <th style="cursor:pointer;user-select:none" wire:click="cambiarOrden('precio_efectivo')">
+                    Precio efectivo
+                    @if($ordenar === 'precio_efectivo')
+                        <span style="margin-left:5px">{{ $ordenDir === 'asc' ? '↑' : '↓' }}</span>
+                    @endif
+                </th>
+                <th style="cursor:pointer;user-select:none" wire:click="cambiarOrden('stock_actual')">
+                    Stock
+                    @if($ordenar === 'stock_actual')
+                        <span style="margin-left:5px">{{ $ordenDir === 'asc' ? '↑' : '↓' }}</span>
+                    @endif
+                </th>
                 <th>Estado</th>
                 <th></th>
             </tr>
