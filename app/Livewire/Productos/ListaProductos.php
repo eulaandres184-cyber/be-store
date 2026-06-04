@@ -20,8 +20,14 @@ class ListaProductos extends Component
 
     protected $queryString = ['busqueda', 'categoriaFiltro', 'estadoFiltro', 'ordenar', 'ordenDir'];
 
-    public function updatingBusqueda()  { $this->resetPage(); }
-    public function updatingCategoria() { $this->resetPage(); }
+    public function updatingBusqueda()
+    {
+        $this->resetPage();
+    }
+    public function updatingCategoria()
+    {
+        $this->resetPage();
+    }
 
     /**
      * Cambiar orden de la columna
@@ -65,7 +71,7 @@ class ListaProductos extends Component
             ->when($this->categoriaFiltro, fn($q) => $q->where('categoria_id', $this->categoriaFiltro))
             ->when($this->estadoFiltro === 'activos',   fn($q) => $q->where('activo', true))
             ->when($this->estadoFiltro === 'inactivos', fn($q) => $q->where('activo', false))
-            ->when($this->estadoFiltro === 'bajo_stock',fn($q) => $q->bajoMinimo()->where('activo', true))
+            ->when($this->estadoFiltro === 'bajo_stock', fn($q) => $q->bajoMinimo()->where('activo', true))
             ->with('categoria')
             ->orderBy($this->ordenar, $this->ordenDir)
             ->paginate(20);

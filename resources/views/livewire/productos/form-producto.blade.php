@@ -1,15 +1,16 @@
-@push('estilos')
-    @vite(['resources/css/productos.css'])
-@endpush
-@push('scripts')
-    @vite(['resources/js/productos.js'])
-@endpush
+<div>
+    @push('estilos')
+        @vite(['resources/css/productos.css'])
+    @endpush
+    @push('scripts')
+        @vite(['resources/js/productos.js'])
+    @endpush
 
-@if(session('warning'))
-    <div class="bs-alert-warning">⚠️ {{ session('warning') }}</div>
-@endif
+    @if(session('warning'))
+        <div class="bs-alert-warning">⚠️ {{ session('warning') }}</div>
+    @endif
 
-<div class="bs-page-title">
+    <div class="bs-page-title">
     <span>{{ $modoEdicion ? '✏️ Editar producto' : '➕ Nuevo producto' }}</span>
     <a href="{{ route('productos') }}" class="bs-btn-secondary">← Volver</a>
 </div>
@@ -177,27 +178,27 @@
         </button>
         <a href="{{ route('productos') }}" class="bs-btn-secondary">Cancelar</a>
     </div>
-</div>
+    </div>
 
-{{-- Modal scanner de cámara --}}
-<div id="scanner-modal" class="scanner-overlay" style="display:none">
-    <div class="scanner-box">
-        <h3>📷 Escanear código de barras</h3>
-        <video id="scanner-video" playsinline></video>
-        <div id="scanner-resultado" class="scanner-resultado"></div>
-        <div class="scanner-btns">
-            <button
-                type="button"
-                class="bs-btn-secondary w-full"
-                onclick="BeScanner.detener(); document.getElementById('scanner-modal').style.display='none'"
-            >
-                Cancelar
-            </button>
-        </div>
-        <div style="font-size:.72rem;color:var(--bs-muted);text-align:center;margin-top:.5rem">
-            Apuntá la cámara al código de barras del producto
+    {{-- Modal scanner de cámara --}}
+    <div id="scanner-modal" class="scanner-overlay" style="display:none">
+        <div class="scanner-box">
+            <h3>📷 Escanear código de barras</h3>
+            <video id="scanner-video" playsinline></video>
+            <div id="scanner-resultado" class="scanner-resultado"></div>
+            <div class="scanner-btns">
+                <button
+                    type="button"
+                    class="bs-btn-secondary w-full"
+                    onclick="BeScanner.detener(); document.getElementById('scanner-modal').style.display='none'"
+                >
+                    Cancelar
+                </button>
+            </div>
+            <div style="font-size:.72rem;color:var(--bs-muted);text-align:center;margin-top:.5rem">
+                Apuntá la cámara al código de barras del producto
+            </div>
         </div>
     </div>
 </div>
-
 
