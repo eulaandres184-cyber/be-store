@@ -135,6 +135,5 @@
 
     {{-- Paginación --}}
     <div style="margin-top:.75rem">
-        {{ $productos->links() }}
     </div>
 </div>

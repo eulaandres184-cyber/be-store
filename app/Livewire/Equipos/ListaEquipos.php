@@ -6,14 +6,14 @@ use App\Models\EquipoDetalle;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Component;
 use Livewire\Attributes\Computed;
-use Livewire\WithPagination;
+
 
 /**
  * ListaEquipos - Componente Livewire para listar equipos (celulares con IMEI)
  */
 class ListaEquipos extends Component
 {
-    use WithPagination;
+    
 
     public string $busqueda = '';
     public string $marcaFiltro = '';
@@ -45,7 +45,7 @@ class ListaEquipos extends Component
             ->when($this->estadoFiltro !== 'todos', fn($q) => $q->where('estado', $this->estadoFiltro))
             ->with('producto')
             ->orderByDesc('created_at')
-            ->paginate(20);
+            ->get();
     }
 
     /**

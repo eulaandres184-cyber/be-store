@@ -3,13 +3,13 @@
 namespace App\Livewire\Productos;
 
 use Livewire\Component;
-use Livewire\WithPagination;
+
 use App\Models\Producto;
 use App\Models\Categoria;
 
 class ListaProductos extends Component
 {
-    use WithPagination;
+    
 
     public string $busqueda        = '';
     public string $categoriaFiltro = '';
@@ -74,7 +74,7 @@ class ListaProductos extends Component
             ->when($this->estadoFiltro === 'bajo_stock', fn($q) => $q->bajoMinimo()->where('activo', true))
             ->with('categoria')
             ->orderBy($this->ordenar, $this->ordenDir)
-            ->paginate(20);
+            ->get();
 
         return view('livewire.productos.lista-productos', compact('productos'))
             ->layout('layouts.app', ['title' => 'Productos']);

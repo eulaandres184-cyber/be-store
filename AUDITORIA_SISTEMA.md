@@ -3,6 +3,7 @@
 ## Descripción
 
 El sistema de auditoría registra automáticamente todos los cambios realizados en:
+
 - **Precios de productos** - Cambios de precio_efectivo y moneda
 - **Configuración del sistema** - Recargos, porcentajes, valores del dólar
 - **Historial del dólar** - Cotización de compra y venta
@@ -18,21 +19,26 @@ Esto permite:
 ## 📁 Estructura de Archivos
 
 ### Modelos
+
 - `app/Models/HistorialPrecioProducto.php` - Registro de cambios de precios
 - `app/Models/HistorialConfiguracion.php` - Registro de cambios en configuración
 - `app/Models/HistorialDolar.php` - Registro de cotizaciones del dólar (actualizado)
 
 ### Observers (Listeners automáticos)
+
 - `app/Observers/ProductoObserver.php` - Observa cambios en modelo Producto
 - `app/Observers/ConfiguracionObserver.php` - Observa cambios en modelo Configuracion
 
 ### Componentes Livewire
+
 - `app/Livewire/Auditoria/HistorialCambios.php` - Visualización del historial
 
 ### Vistas
+
 - `resources/views/livewire/auditoria/historial-cambios.blade.php` - Interfaz del historial
 
 ### Migraciones
+
 - `database/migrations/2026_06_06_000001_create_historial_precios_productos_table.php`
 - `database/migrations/2026_06_06_000002_create_historial_configuracion_table.php`
 
@@ -43,12 +49,14 @@ Esto permite:
 ### 1. Cambios Automáticos (Sin intervención manual)
 
 Cuando actualizas un **Producto**:
+
 ```php
 $producto = Producto::find(1);
 $producto->update(['precio_efectivo' => 150]); // Se registra automáticamente
 ```
 
 Cuando actualizas **Configuración**:
+
 ```php
 $config = Configuracion::find(1);
 $config->update(['recargo_tarjeta' => 20]); // Se registra automáticamente
@@ -57,6 +65,7 @@ $config->update(['recargo_tarjeta' => 20]); // Se registra automáticamente
 ### 2. Registros Manuales (si lo necesitas)
 
 **Registrar cambio de precio manualmente:**
+
 ```php
 HistorialPrecioProducto::registrarCambio(
     productoId: 1,
@@ -70,6 +79,7 @@ HistorialPrecioProducto::registrarCambio(
 ```
 
 **Registrar cambio de configuración:**
+
 ```php
 HistorialConfiguracion::registrarCambio(
     comercioId: 1,
@@ -82,6 +92,7 @@ HistorialConfiguracion::registrarCambio(
 ```
 
 **Registrar cambio de dólar:**
+
 ```php
 HistorialDolar::registrarCambio(
     valorCompra: 350,
@@ -97,10 +108,12 @@ HistorialDolar::registrarCambio(
 ## 📋 Campos Auditados
 
 ### Producto
+
 - `precio_efectivo` - Precio base
 - `moneda` - Moneda (ARS/USD)
 
 ### Configuración
+
 - `recargo_tarjeta` - Recargo tarjeta de crédito (%)
 - `cuotas_4_recargo` - Recargo 4 cuotas (%)
 - `cuotas_20_recargo` - Recargo 20 cuotas (%)
@@ -108,6 +121,7 @@ HistorialDolar::registrarCambio(
 - `dolar_oficial` - Valor dólar oficial
 
 ### Dólar
+
 - `valor_compra` - Cotización de compra
 - `valor_venta` - Cotización de venta
 - `fuente` - Origen del dato (API, manual, etc)
@@ -117,6 +131,7 @@ HistorialDolar::registrarCambio(
 ## 🔍 Consultas Útiles
 
 ### Obtener historial de un producto
+
 ```php
 $producto = Producto::find(1);
 $cambios = $producto->historialPrecios()->get();
@@ -129,6 +144,7 @@ foreach ($cambios as $cambio) {
 ```
 
 ### Obtener últimos cambios de configuración
+
 ```php
 $cambios = HistorialConfiguracion::query()
     ->where('comercio_id', 1)
@@ -139,6 +155,7 @@ $cambios = HistorialConfiguracion::query()
 ```
 
 ### Obtener cambios de los últimos 30 días
+
 ```php
 $cambios = HistorialPrecioProducto::query()
     ->delComercio(1)
@@ -147,6 +164,7 @@ $cambios = HistorialPrecioProducto::query()
 ```
 
 ### Obtener cambios por usuario
+
 ```php
 $cambios = HistorialConfiguracion::query()
     ->delComercio(1)
@@ -160,50 +178,57 @@ $cambios = HistorialConfiguracion::query()
 ## 📊 Información del Historial
 
 ### HistorialPrecioProducto
-| Campo | Tipo | Descripción |
-|-------|------|-------------|
-| id | INT | ID único |
-| producto_id | FK | Producto modificado |
-| comercio_id | FK | Comercio propietario |
-| precio_anterior | DECIMAL | Precio anterior |
-| precio_nuevo | DECIMAL | Precio nuevo |
-| moneda_anterior | VARCHAR | Moneda anterior |
-| moneda_nueva | VARCHAR | Moneda nueva |
-| usuario_id | FK | Usuario que realizó el cambio |
-| razon_cambio | VARCHAR | Motivo del cambio |
-| cambio_en | TIMESTAMP | Cuándo ocurrió |
-| created_at | TIMESTAMP | Cuándo se registró |
-| updated_at | TIMESTAMP | Última actualización |
+
+| Campo           | Tipo      | Descripción                   |
+| --------------- | --------- | ----------------------------- |
+| id              | INT       | ID único                      |
+| producto_id     | FK        | Producto modificado           |
+| comercio_id     | FK        | Comercio propietario          |
+| precio_anterior | DECIMAL   | Precio anterior               |
+| precio_nuevo    | DECIMAL   | Precio nuevo                  |
+| moneda_anterior | VARCHAR   | Moneda anterior               |
+| moneda_nueva    | VARCHAR   | Moneda nueva                  |
+| usuario_id      | FK        | Usuario que realizó el cambio |
+| razon_cambio    | VARCHAR   | Motivo del cambio             |
+| cambio_en       | TIMESTAMP | Cuándo ocurrió                |
+| created_at      | TIMESTAMP | Cuándo se registró            |
+| updated_at      | TIMESTAMP | Última actualización          |
 
 ### HistorialConfiguracion
-| Campo | Tipo | Descripción |
-|-------|------|-------------|
-| id | INT | ID único |
-| comercio_id | FK | Comercio |
-| campo | VARCHAR | Campo modificado |
-| valor_anterior | VARCHAR | Valor anterior |
-| valor_nuevo | VARCHAR | Valor nuevo |
-| usuario_id | FK | Usuario que realizó el cambio |
-| descripcion | TEXT | Descripción del cambio |
-| cambio_en | TIMESTAMP | Cuándo ocurrió |
+
+| Campo          | Tipo      | Descripción                   |
+| -------------- | --------- | ----------------------------- |
+| id             | INT       | ID único                      |
+| comercio_id    | FK        | Comercio                      |
+| campo          | VARCHAR   | Campo modificado              |
+| valor_anterior | VARCHAR   | Valor anterior                |
+| valor_nuevo    | VARCHAR   | Valor nuevo                   |
+| usuario_id     | FK        | Usuario que realizó el cambio |
+| descripcion    | TEXT      | Descripción del cambio        |
+| cambio_en      | TIMESTAMP | Cuándo ocurrió                |
 
 ---
 
 ## 🎯 Ventajas
 
 ### 1. **Sin impacto en ventas anteriores**
+
 Las ventas registran el precio al momento de la compra. Los cambios futuros no afectan histórico.
 
 ### 2. **Trazabilidad completa**
+
 Sabe quién cambió qué, cuándo y potencialmente por qué.
 
 ### 3. **Auditoría**
+
 Perfecto para reportes, análisis y cumplimiento normativo.
 
 ### 4. **Análisis de precios**
+
 Puede ver evolución de precios a lo largo del tiempo.
 
 ### 5. **Información de costos**
+
 Sigue la evolución del dólar y cómo impactó en precios.
 
 ---
@@ -213,6 +238,7 @@ Sigue la evolución del dólar y cómo impactó en precios.
 ### Agregar nuevo campo a auditar
 
 1. **Actualizar ConfiguracionObserver.php:**
+
 ```php
 private const CAMPOS_AUDITABLES = [
     'recargo_tarjeta',
@@ -221,6 +247,7 @@ private const CAMPOS_AUDITABLES = [
 ```
 
 2. **Actualizar HistorialConfiguracion::getCamposAuditables():**
+
 ```php
 public static function getCamposAuditables(): array
 {
@@ -235,6 +262,7 @@ public static function getCamposAuditables(): array
 
 1. **Crear observer** para el modelo en `app/Observers/MiModeloObserver.php`
 2. **Registrar en AppServiceProvider.php:**
+
 ```php
 MiModelo::observe(MiModeloObserver::class);
 ```

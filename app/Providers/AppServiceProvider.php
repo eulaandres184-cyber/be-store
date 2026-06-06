@@ -24,7 +24,7 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         // Registrar observers para auditoría automática
-        Producto::observe(ProductoObserver::class);
+        // Producto::observe(ProductoObserver::class);
         Configuracion::observe(ConfiguracionObserver::class);
     }
 }
