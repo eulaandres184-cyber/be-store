@@ -58,6 +58,15 @@ class Producto extends Model
     }
 
     /**
+     * Relación con historial de cambios de precio
+     */
+    public function historialPrecios()
+    {
+        return $this->hasMany(HistorialPrecioProducto::class, 'producto_id', 'id')
+            ->orderByDesc('cambio_en');
+    }
+
+    /**
      * Generar código interno automático
      */
     public static function generarCodigoInterno(): string
