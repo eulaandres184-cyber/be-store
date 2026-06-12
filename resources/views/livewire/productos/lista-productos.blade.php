@@ -1,79 +1,52 @@
+@push('estilos')@vite(['resources/css/productos.css'])@endpush
+@push('scripts')@vite(['resources/js/productos.js'])@endpush
 <div>
-    @push('estilos')
-        @vite(['resources/css/productos.css'])
-    @endpush
-    @push('scripts')
-        @vite(['resources/js/productos.js'])
-    @endpush
+@if(session('success'))<div class="bs-alert-success">✅ {{ session('success') }}</div>@endif
+@if(session('warning'))<div class="bs-alert-warning">⚠️ {{ session('warning') }}</div>@endif
 
-    @if(session('success'))
-        <div class="bs-alert-success">✅ {{ session('success') }}</div>
-    @endif
-    @if(session('warning'))
-        <div class="bs-alert-warning">⚠️ {{ session('warning') }}</div>
-    @endif
-
-    @php $esAdmin = (auth()->user()->rol ?? 'vendedor') === 'admin'; @endphp
-    <div class="bs-page-title">
+<div class="bs-page-title">
     <span>📦 Productos</span>
-    @if($esAdmin)
-        <a href="{{ route('productos.nuevo') }}" class="bs-btn-black">+ Nuevo producto</a>
+    @if((auth()->user()->rol ?? 'vendedor') === 'admin')
+    <a href="{{ route('productos.nuevo') }}" class="bs-btn-black">+ Nuevo producto</a>
     @endif
 </div>
 
-{{-- Filtros --}}
 <div class="productos-filtros">
-    <input
-        class="bs-input"
-        wire:model.live.debounce.300ms="busqueda"
-        placeholder="Buscar por nombre, código interno o código de barras..."
-    />
+    <input class="bs-input" wire:model.live.debounce.300ms="busqueda"
+           placeholder="Buscar por nombre, código o barras..."/>
     <select class="bs-select" wire:model.live="categoriaFiltro">
         <option value="">Todas las categorías</option>
         @foreach($this->categorias as $cat)
             <option value="{{ $cat->id }}">{{ $cat->nombre }}</option>
         @endforeach
     </select>
-
 </div>
 
-{{-- Tabs de estado --}}
 <div class="estado-tabs">
-    <div class="estado-tab {{ $estadoFiltro === 'todos' ? 'activo' : '' }}" wire:click="$set('estadoFiltro','todos')">Todos</div>
-    <div class="estado-tab {{ $estadoFiltro === 'activos' ? 'activo' : '' }}" wire:click="$set('estadoFiltro','activos')">Activos</div>
-    <div class="estado-tab {{ $estadoFiltro === 'bajo_stock' ? 'activo' : '' }}" wire:click="$set('estadoFiltro','bajo_stock')">⚠️ Bajo stock</div>
-    <div class="estado-tab {{ $estadoFiltro === 'inactivos' ? 'activo' : '' }}" wire:click="$set('estadoFiltro','inactivos')">Inactivos</div>
+    <div class="estado-tab {{ $estadoFiltro==='todos'      ?'activo':'' }}" wire:click="$set('estadoFiltro','todos')">Todos</div>
+    <div class="estado-tab {{ $estadoFiltro==='activos'    ?'activo':'' }}" wire:click="$set('estadoFiltro','activos')">Activos</div>
+    <div class="estado-tab {{ $estadoFiltro==='bajo_stock' ?'activo':'' }}" wire:click="$set('estadoFiltro','bajo_stock')">⚠️ Bajo stock</div>
+    <div class="estado-tab {{ $estadoFiltro==='inactivos'  ?'activo':'' }}" wire:click="$set('estadoFiltro','inactivos')">Inactivos</div>
 </div>
 
-{{-- Tabla --}}
 <div class="bs-card" style="padding:0;overflow:hidden">
     <table class="bs-table">
         <thead>
             <tr>
-                <th style="cursor:pointer;user-select:none" wire:click="cambiarOrden('codigo_interno')">
-                    Código
-                    @if($ordenar === 'codigo_interno')
-                        <span style="margin-left:5px">{{ $ordenDir === 'asc' ? '↑' : '↓' }}</span>
-                    @endif
+                <th class="th-sort" wire:click="ordenar('codigo_interno')">
+                    Código @if($ordenarPor==='codigo_interno'){{ $direccion==='asc'?'↑':'↓' }}@else<span class="th-icon">↕</span>@endif
                 </th>
-                <th style="cursor:pointer;user-select:none" wire:click="cambiarOrden('nombre')">
-                    Nombre
-                    @if($ordenar === 'nombre')
-                        <span style="margin-left:5px">{{ $ordenDir === 'asc' ? '↑' : '↓' }}</span>
-                    @endif
+                <th class="th-sort" wire:click="ordenar('nombre')">
+                    Nombre @if($ordenarPor==='nombre'){{ $direccion==='asc'?'↑':'↓' }}@else<span class="th-icon">↕</span>@endif
                 </th>
-                <th>Categoría</th>
-                <th style="cursor:pointer;user-select:none" wire:click="cambiarOrden('precio_efectivo')">
-                    Precio efectivo
-                    @if($ordenar === 'precio_efectivo')
-                        <span style="margin-left:5px">{{ $ordenDir === 'asc' ? '↑' : '↓' }}</span>
-                    @endif
+                <th class="th-sort" wire:click="ordenar('categoria_id')">
+                    Categoría @if($ordenarPor==='categoria_id'){{ $direccion==='asc'?'↑':'↓' }}@else<span class="th-icon">↕</span>@endif
                 </th>
-                <th style="cursor:pointer;user-select:none" wire:click="cambiarOrden('stock_actual')">
-                    Stock
-                    @if($ordenar === 'stock_actual')
-                        <span style="margin-left:5px">{{ $ordenDir === 'asc' ? '↑' : '↓' }}</span>
-                    @endif
+                <th class="th-sort" wire:click="ordenar('precio_efectivo')">
+                    Precio @if($ordenarPor==='precio_efectivo'){{ $direccion==='asc'?'↑':'↓' }}@else<span class="th-icon">↕</span>@endif
+                </th>
+                <th class="th-sort" wire:click="ordenar('stock_actual')">
+                    Stock @if($ordenarPor==='stock_actual'){{ $direccion==='asc'?'↑':'↓' }}@else<span class="th-icon">↕</span>@endif
                 </th>
                 <th>Estado</th>
                 <th></th>
@@ -92,7 +65,10 @@
             </td>
             <td style="font-weight:500">{{ $producto->nombre }}</td>
             <td>{{ $producto->categoria->nombre ?? '—' }}</td>
-            <td style="font-weight:600;color:var(--bs-blue)">${{ number_format($producto->precio_efectivo, 0, ',', '.') }} {{ $producto->moneda }}</td>
+            <td style="font-weight:600;color:var(--bs-blue)">
+                ${{ number_format($producto->precio_efectivo,0,',','.') }}
+                <small>{{ $producto->moneda }}</small>
+            </td>
             <td>
                 @if($producto->stock_actual == 0)
                     <span class="stock-zero">Sin stock</span>
@@ -103,21 +79,21 @@
                 @endif
             </td>
             <td>
-                @if($producto->activo)
-                    <span class="bs-badge-green">Activo</span>
-                @else
-                    <span class="bs-badge-red">Inactivo</span>
-                @endif
+                <span class="bs-badge-{{ $producto->activo ? 'green' : 'red' }}">
+                    {{ $producto->activo ? 'Activo' : 'Inactivo' }}
+                </span>
             </td>
             <td>
                 <div class="tbl-actions">
-                    @if($esAdmin)
-                        <a href="{{ route('productos.editar', $producto->id) }}" class="btn-edit">Editar</a>
-                        @if($producto->activo)
-                            <button wire:click="eliminar({{ $producto->id }})" wire:confirm="¿Desactivar este producto?" class="btn-del">Desactivar</button>
-                        @else
-                            <button wire:click="activar({{ $producto->id }})" class="btn-edit">Activar</button>
-                        @endif
+                    @if((auth()->user()->rol ?? 'vendedor') === 'admin')
+                    <a href="{{ route('productos.editar', $producto->id) }}" class="btn-edit">Editar</a>
+                    @if($producto->activo)
+                        <button wire:click="eliminar({{ $producto->id }})"
+                                wire:confirm="¿Desactivar este producto?"
+                                class="btn-del">Desactivar</button>
+                    @else
+                        <button wire:click="activar({{ $producto->id }})" class="btn-edit">Activar</button>
+                    @endif
                     @endif
                 </div>
             </td>
@@ -132,8 +108,4 @@
         </tbody>
     </table>
 </div>
-
-    {{-- Paginación --}}
-    <div style="margin-top:.75rem">
-    </div>
 </div>
