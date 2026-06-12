@@ -1,53 +1,34 @@
 <?php
-
 namespace App\Livewire\Productos;
 
 use Livewire\Component;
-
 use App\Models\Producto;
 use App\Models\Categoria;
 
 class ListaProductos extends Component
 {
-    
-
     public string $busqueda        = '';
     public string $categoriaFiltro = '';
     public string $estadoFiltro    = 'activos';
-    public string $ordenar         = 'nombre';
-    public string $ordenDir        = 'asc';
-    public bool   $escaneando      = false;
+    public string $ordenarPor      = 'nombre';
+    public string $direccion       = 'asc';
 
-    protected $queryString = ['busqueda', 'categoriaFiltro', 'estadoFiltro', 'ordenar', 'ordenDir'];
-
-    public function updatingBusqueda()
+    public function ordenar(string $columna): void
     {
-        $this->resetPage();
-    }
-    public function updatingCategoria()
-    {
-        $this->resetPage();
-    }
-
-    /**
-     * Cambiar orden de la columna
-     */
-    public function cambiarOrden(string $columna): void
-    {
-        if ($this->ordenar === $columna) {
-            // Si ya está ordenado por esta columna, alternar dirección
-            $this->ordenDir = $this->ordenDir === 'asc' ? 'desc' : 'asc';
+        if ($this->ordenarPor === $columna) {
+            $this->direccion = $this->direccion === 'asc' ? 'desc' : 'asc';
         } else {
-            // Cambiar a nueva columna con orden ascendente
-            $this->ordenar = $columna;
-            $this->ordenDir = 'asc';
+            $this->ordenarPor = $columna;
+            $this->direccion  = 'asc';
         }
-        $this->resetPage();
     }
 
     public function getCategoriasProperty()
     {
-        return Categoria::where('comercio_id', 1)->where('activo', true)->orderBy('orden')->get();
+        return Categoria::where('comercio_id', 1)
+            ->where('activo', true)
+            ->orderBy('orden')
+            ->get();
     }
 
     public function eliminar(int $id): void
@@ -67,13 +48,13 @@ class ListaProductos extends Component
     public function render()
     {
         $productos = Producto::where('comercio_id', 1)
-            ->when($this->busqueda, fn($q) => $q->buscar($this->busqueda))
+            ->when($this->busqueda,        fn($q) => $q->buscar($this->busqueda))
             ->when($this->categoriaFiltro, fn($q) => $q->where('categoria_id', $this->categoriaFiltro))
-            ->when($this->estadoFiltro === 'activos',   fn($q) => $q->where('activo', true))
-            ->when($this->estadoFiltro === 'inactivos', fn($q) => $q->where('activo', false))
+            ->when($this->estadoFiltro === 'activos',    fn($q) => $q->where('activo', true))
+            ->when($this->estadoFiltro === 'inactivos',  fn($q) => $q->where('activo', false))
             ->when($this->estadoFiltro === 'bajo_stock', fn($q) => $q->bajoMinimo()->where('activo', true))
             ->with('categoria')
-            ->orderBy($this->ordenar, $this->ordenDir)
+            ->orderBy($this->ordenarPor, $this->direccion)
             ->get();
 
         return view('livewire.productos.lista-productos', compact('productos'))

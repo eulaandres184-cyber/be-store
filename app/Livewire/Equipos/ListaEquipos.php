@@ -1,103 +1,57 @@
 <?php
-
 namespace App\Livewire\Equipos;
 
-use App\Models\EquipoDetalle;
-use Illuminate\Support\Facades\Auth;
 use Livewire\Component;
-use Livewire\Attributes\Computed;
+use App\Models\EquipoDetalle;
+use App\Models\Configuracion;
 
-
-/**
- * ListaEquipos - Componente Livewire para listar equipos (celulares con IMEI)
- */
 class ListaEquipos extends Component
 {
-    
-
-    public string $busqueda = '';
-    public string $marcaFiltro = '';
+    public string $busqueda     = '';
     public string $estadoFiltro = 'disponible';
+    public string $marcaFiltro  = '';
+    public string $ordenarPor   = 'created_at';
+    public string $direccion    = 'desc';
 
-    protected $queryString = ['busqueda', 'marcaFiltro', 'estadoFiltro'];
-
-    /**
-     * Obtener ID del comercio del usuario autenticado
-     */
-    private function comercioId(): int
+    public function ordenar(string $columna): void
     {
-        return Auth::user()?->comercio_id ?? 1;
+        if ($this->ordenarPor === $columna) {
+            $this->direccion = $this->direccion === 'asc' ? 'desc' : 'asc';
+        } else {
+            $this->ordenarPor = $columna;
+            $this->direccion  = 'asc';
+        }
     }
 
-    /**
-     * Equipos paginados con filtros aplicados
-     */
-    #[Computed]
-    public function equipos()
+    public function getMarcasProperty()
     {
-        return EquipoDetalle::query()
-            ->whereHas('producto', fn($q) => $q->where('comercio_id', $this->comercioId()))
-            ->when($this->busqueda, function ($q) {
-                $q->where('imei', 'like', "%{$this->busqueda}%")
-                  ->orWhere('nombre', 'like', "%{$this->busqueda}%");
-            })
-            ->when($this->marcaFiltro, fn($q) => $q->where('marca', 'like', "%{$this->marcaFiltro}%"))
-            ->when($this->estadoFiltro !== 'todos', fn($q) => $q->where('estado', $this->estadoFiltro))
-            ->with('producto')
-            ->orderByDesc('created_at')
-            ->get();
+        return EquipoDetalle::select('marca')
+            ->distinct()
+            ->orderBy('marca')
+            ->pluck('marca');
     }
 
-    /**
-     * Obtener marcas únicas de equipos disponibles
-     */
-    #[Computed]
-    public function marcas()
+    public function getDolarProperty()
     {
-        return EquipoDetalle::query()
-            ->whereHas('producto', fn($q) => $q->where('comercio_id', $this->comercioId()))
-            ->distinct('marca')
-            ->pluck('marca')
-            ->filter()
-            ->sort()
-            ->values();
+        return Configuracion::where('comercio_id', 1)->value('dolar_blue_hoy') ?? 0;
     }
 
-    /**
-     * Resetear paginación cuando cambia la búsqueda
-     */
-    public function updatingBusqueda(): void
-    {
-        $this->resetPage();
-    }
-
-    /**
-     * Resetear paginación cuando cambia el filtro de marca
-     */
-    public function updatingMarcaFiltro(): void
-    {
-        $this->resetPage();
-    }
-
-    /**
-     * Resetear paginación cuando cambia el filtro de estado
-     */
-    public function updatingEstadoFiltro(): void
-    {
-        $this->resetPage();
-    }
-
-    /**
-     * Renderizar la vista
-     */
     public function render()
     {
-        $equiposDisponibles = EquipoDetalle::where('estado', 'disponible')
-            ->whereHas('producto', fn($q) => $q->where('comercio_id', $this->comercioId()))
-            ->count();
+        $equipos = EquipoDetalle::with('producto')
+            ->whereHas('producto', fn($q) => $q->where('comercio_id', 1))
+            ->when($this->busqueda, fn($q) => $q->where(function($q) {
+                $q->where('marca',  'like', "%{$this->busqueda}%")
+                  ->orWhere('modelo', 'like', "%{$this->busqueda}%")
+                  ->orWhere('imei',   'like', "%{$this->busqueda}%")
+                  ->orWhere('color',  'like', "%{$this->busqueda}%");
+            }))
+            ->when($this->estadoFiltro, fn($q) => $q->where('estado', $this->estadoFiltro))
+            ->when($this->marcaFiltro,  fn($q) => $q->where('marca',  $this->marcaFiltro))
+            ->orderBy($this->ordenarPor, $this->direccion)
+            ->get();
 
-        return view('livewire.equipos.lista-equipos', [
-            'equiposDisponibles' => $equiposDisponibles,
-        ])->layout('layouts.app', ['title' => 'Equipos']);
+        return view('livewire.equipos.lista-equipos', compact('equipos'))
+            ->layout('layouts.app', ['title' => 'Equipos']);
     }
 }
