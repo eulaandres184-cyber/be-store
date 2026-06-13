@@ -21,8 +21,12 @@
     <table class="bs-table">
         <thead>
             <tr>
-                <th class="th-sort" wire:click="ordenar('orden')">Orden @if($ordenarPor==='orden'){{ $direccion==='asc'?'↑':'↓' }}@else<span class="th-icon">↕</span>@endif</th>
-                <th class="th-sort" wire:click="ordenar('nombre')">Nombre @if($ordenarPor==='nombre'){{ $direccion==='asc'?'↑':'↓' }}@else<span class="th-icon">↕</span>@endif</th>
+                <th class="th-sort" wire:click="ordenar('orden')">
+                    Orden @if($ordenarPor==='orden'){{ $direccion==='asc'?'↑':'↓' }}@else<span class="th-icon">↕</span>@endif
+                </th>
+                <th class="th-sort" wire:click="ordenar('nombre')">
+                    Nombre @if($ordenarPor==='nombre'){{ $direccion==='asc'?'↑':'↓' }}@else<span class="th-icon">↕</span>@endif
+                </th>
                 <th>Tipo</th>
                 <th>Productos</th>
                 <th>Estado</th>
@@ -34,25 +38,41 @@
         <tr wire:key="cat-{{ $cat->id }}">
             <td style="font-weight:600;color:var(--bs-muted)">{{ $cat->orden }}</td>
             <td style="font-weight:600">{{ $cat->nombre }}</td>
-            <td><span class="bs-badge-{{ $cat->tipo==='accesorio'?'blue':'green' }}">{{ ucfirst($cat->tipo) }}</span></td>
+            <td>
+                <span class="bs-badge-{{ $cat->tipo==='accesorio'?'blue':'green' }}">
+                    {{ ucfirst($cat->tipo) }}
+                </span>
+            </td>
             <td>{{ $cat->productos_count }}</td>
-            <td><span class="bs-badge-{{ $cat->activo?'green':'red' }}">{{ $cat->activo?'Activa':'Inactiva' }}</span></td>
+            <td>
+                <span class="bs-badge-{{ $cat->activo?'green':'red' }}">
+                    {{ $cat->activo ? 'Activa' : 'Inactiva' }}
+                </span>
+            </td>
             <td>
                 <div class="tbl-actions">
                     <a href="{{ route('categorias.editar', $cat->id) }}" class="btn-edit">Editar</a>
-                    <button wire:click="toggleActivo({{ $cat->id }})" class="btn-edit">
+                    {{-- Solo se puede desactivar/activar, nunca eliminar --}}
+                    <button wire:click="toggleActivo({{ $cat->id }})"
+                            wire:confirm="{{ $cat->activo ? '¿Desactivar la categoría '.$cat->nombre.'?' : '¿Activar la categoría '.$cat->nombre.'?' }}"
+                            class="{{ $cat->activo ? 'btn-del' : 'btn-edit' }}">
                         {{ $cat->activo ? 'Desactivar' : 'Activar' }}
                     </button>
-                    @if($cat->productos_count === 0)
-                    <button wire:click="eliminar({{ $cat->id }})" wire:confirm="¿Eliminar esta categoría?" class="btn-del">Eliminar</button>
-                    @endif
                 </div>
             </td>
         </tr>
         @empty
-        <tr><td colspan="6" style="text-align:center;padding:2rem;color:var(--bs-muted)">No se encontraron categorías</td></tr>
+        <tr>
+            <td colspan="6" style="text-align:center;padding:2rem;color:var(--bs-muted)">
+                No se encontraron categorías
+            </td>
+        </tr>
         @endforelse
         </tbody>
     </table>
+</div>
+
+<div style="margin-top:.5rem;font-size:.75rem;color:var(--bs-muted)">
+    Total: {{ count($categorias) }} categoría(s)
 </div>
 </div>

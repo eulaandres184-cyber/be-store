@@ -21,21 +21,17 @@ class ListaCategorias extends Component
         }
     }
 
-    public function eliminar(int $id): void
-    {
-        $cat = Categoria::findOrFail($id);
-        if ($cat->productos()->count() > 0) {
-            session()->flash('error', "No podés eliminar '{$cat->nombre}' porque tiene productos asociados.");
-            return;
-        }
-        $cat->delete();
-        session()->flash('success', "Categoría '{$cat->nombre}' eliminada.");
-    }
-
+    /**
+     * Las categorías NUNCA se eliminan — solo se desactivan.
+     * Esto preserva la integridad del historial de ventas y productos.
+     */
     public function toggleActivo(int $id): void
     {
         $cat = Categoria::findOrFail($id);
         $cat->update(['activo' => !$cat->activo]);
+
+        $estado = $cat->fresh()->activo ? 'activada' : 'desactivada';
+        session()->flash('success', "Categoría '{$cat->nombre}' {$estado}.");
     }
 
     public function render()
