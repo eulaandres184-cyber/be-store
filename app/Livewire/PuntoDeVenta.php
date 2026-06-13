@@ -153,6 +153,21 @@ class PuntoDeVenta extends Component
     public function registrarVenta(): void
     {
         if (empty($this->carrito)) return;
+
+        // Verificar que los equipos en el carrito tengan IMEI registrado
+        foreach ($this->carrito as $item) {
+            $producto = \App\Models\Producto::find($item['id']);
+            if ($producto && $producto->equipoDetalle) {
+                $equipo = $producto->equipoDetalle;
+                if (empty($equipo->imei)) {
+                    session()->flash('error_imei',
+                        "El equipo '{$producto->nombre}' no tiene IMEI registrado. " .
+                        "Ingresá el IMEI antes de venderlo."
+                    );
+                    return;
+                }
+            }
+        }
         $config = $this->config;
         $recargoPct = match($this->medioPago) {
             'tarjeta'   => $config?->recargo_tarjeta   ?? 15,

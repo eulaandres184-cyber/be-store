@@ -10,29 +10,31 @@ use Illuminate\Support\Facades\DB;
 
 class FormEquipo extends Component
 {
-    public ?int    $equipoId      = null;
-    public string  $imei          = '';
-    public string  $marca         = '';
-    public string  $modelo        = '';
-    public string  $capacidad_gb  = '';
-    public string  $color         = '';
-    public string  $condicion     = 'nuevo';
-    public string  $precio_usd    = '';
-    public string  $bateria_pct   = '';
-    public string  $estado        = 'disponible';
+    public ?int    $equipoId       = null;
+    public string  $imei           = '';
+    public string  $marca          = '';
+    public string  $modelo         = '';
+    public string  $capacidad_gb   = '';
+    public string  $color          = '';
+    public string  $condicion      = 'nuevo';
+    public string  $precio_usd     = '';
+    public string  $bateria_pct    = '';
+    public string  $estado         = 'disponible';
     public string  $nombre_producto = '';
     public string  $descripcion     = '';
     public string  $categoria_id    = '';
     public string  $codigo_barras   = '';
-    public bool    $modoEdicion   = false;
+    public bool    $modoEdicion     = false;
 
     public array $marcasComunes  = ['iPhone','Samsung','Motorola','Xiaomi','Oppo','Huawei','Otro'];
     public array $coloresComunes = ['Negro','Blanco','Azul','Rojo','Verde','Violeta','Titanio','Natural','Dorado','Otro'];
 
     protected function rules(): array
     {
-        $uniqueImei = 'required|string|max:20|unique:equipos_detalle,imei'
+        // IMEI es opcional al cargar — será requerido solo al vender
+        $uniqueImei = 'nullable|string|max:20|unique:equipos_detalle,imei'
             . ($this->equipoId ? ",{$this->equipoId}" : '');
+
         return [
             'imei'            => $uniqueImei,
             'marca'           => 'required|string|max:60',
@@ -49,8 +51,7 @@ class FormEquipo extends Component
     }
 
     protected $messages = [
-        'imei.required'            => 'El IMEI es obligatorio.',
-        'imei.unique'              => 'Este IMEI ya está registrado.',
+        'imei.unique'              => 'Este IMEI ya está registrado en otro equipo.',
         'marca.required'           => 'La marca es obligatoria.',
         'modelo.required'          => 'El modelo es obligatorio.',
         'precio_usd.required'      => 'El precio en USD es obligatorio.',
@@ -64,15 +65,15 @@ class FormEquipo extends Component
             $this->modoEdicion = true;
             $this->equipoId    = $id;
             $equipo = EquipoDetalle::with('producto')->findOrFail($id);
-            $this->imei         = $equipo->imei ?? '';
-            $this->marca        = $equipo->marca ?? '';
-            $this->modelo       = $equipo->modelo ?? '';
-            $this->capacidad_gb = (string)($equipo->capacidad_gb ?? '');
-            $this->color        = $equipo->color ?? '';
-            $this->condicion    = $equipo->condicion ?? 'nuevo';
-            $this->precio_usd   = (string)($equipo->precio_usd ?? '');
-            $this->bateria_pct  = (string)($equipo->bateria_pct ?? '');
-            $this->estado       = $equipo->estado ?? 'disponible';
+            $this->imei          = $equipo->imei ?? '';
+            $this->marca         = $equipo->marca ?? '';
+            $this->modelo        = $equipo->modelo ?? '';
+            $this->capacidad_gb  = (string)($equipo->capacidad_gb ?? '');
+            $this->color         = $equipo->color ?? '';
+            $this->condicion     = $equipo->condicion ?? 'nuevo';
+            $this->precio_usd    = (string)($equipo->precio_usd ?? '');
+            $this->bateria_pct   = (string)($equipo->bateria_pct ?? '');
+            $this->estado        = $equipo->estado ?? 'disponible';
             if ($equipo->producto) {
                 $this->nombre_producto = $equipo->producto->nombre ?? '';
                 $this->descripcion     = $equipo->producto->descripcion ?? '';
@@ -87,10 +88,10 @@ class FormEquipo extends Component
         }
     }
 
-    public function updatedMarca()      { $this->autoNombre(); }
-    public function updatedModelo()     { $this->autoNombre(); }
-    public function updatedCapacidadGb(){ $this->autoNombre(); }
-    public function updatedColor()      { $this->autoNombre(); }
+    public function updatedMarca()       { $this->autoNombre(); }
+    public function updatedModelo()      { $this->autoNombre(); }
+    public function updatedCapacidadGb() { $this->autoNombre(); }
+    public function updatedColor()       { $this->autoNombre(); }
 
     private function autoNombre(): void
     {
@@ -107,8 +108,7 @@ class FormEquipo extends Component
 
     public function getPrecioArsProperty(): float
     {
-        $dolar = (float)(Configuracion::where('comercio_id', 1)->value('dolar_blue_hoy') ?? 0);
-        return (float)$this->precio_usd * $dolar;
+        return (float)$this->precio_usd * $this->dolar;
     }
 
     public function getDolarProperty(): float
@@ -129,20 +129,18 @@ class FormEquipo extends Component
         $this->validate();
 
         DB::transaction(function () {
-            $dolar = $this->dolar;
-
             if ($this->modoEdicion) {
                 $equipo = EquipoDetalle::findOrFail($this->equipoId);
                 $equipo->producto->update([
                     'nombre'          => $this->nombre_producto,
                     'descripcion'     => $this->descripcion ?: null,
                     'categoria_id'    => (int)$this->categoria_id,
-                    'precio_efectivo' => (float)$this->precio_usd * $dolar,
+                    'precio_efectivo' => $this->precioArs,
                     'moneda'          => 'USD',
                     'codigo_barras'   => $this->codigo_barras ?: null,
                 ]);
                 $equipo->update([
-                    'imei'         => $this->imei,
+                    'imei'         => $this->imei ?: null,
                     'marca'        => $this->marca,
                     'modelo'       => $this->modelo,
                     'capacidad_gb' => $this->capacidad_gb ?: null,
@@ -158,7 +156,7 @@ class FormEquipo extends Component
                     'categoria_id'    => (int)$this->categoria_id,
                     'nombre'          => $this->nombre_producto,
                     'descripcion'     => $this->descripcion ?: null,
-                    'precio_efectivo' => (float)$this->precio_usd * $dolar,
+                    'precio_efectivo' => $this->precioArs,
                     'moneda'          => 'USD',
                     'stock_actual'    => 1,
                     'stock_minimo'    => 1,
@@ -168,7 +166,7 @@ class FormEquipo extends Component
                 ]);
                 EquipoDetalle::create([
                     'producto_id'  => $producto->id,
-                    'imei'         => $this->imei,
+                    'imei'         => $this->imei ?: null,
                     'marca'        => $this->marca,
                     'modelo'       => $this->modelo,
                     'capacidad_gb' => $this->capacidad_gb ?: null,
@@ -181,13 +179,17 @@ class FormEquipo extends Component
             }
         });
 
-        session()->flash('success', $this->modoEdicion ? 'Equipo actualizado.' : 'Equipo registrado correctamente.');
+        session()->flash('success', $this->modoEdicion
+            ? 'Equipo actualizado.'
+            : 'Equipo registrado. Recordá agregar el IMEI antes de venderlo.');
         $this->redirect(route('equipos'));
     }
 
     public function render()
     {
         return view('livewire.equipos.form-equipo')
-            ->layout('layouts.app', ['title' => $this->modoEdicion ? 'Editar equipo' : 'Nuevo equipo']);
+            ->layout('layouts.app', [
+                'title' => $this->modoEdicion ? 'Editar equipo' : 'Nuevo equipo'
+            ]);
     }
 }

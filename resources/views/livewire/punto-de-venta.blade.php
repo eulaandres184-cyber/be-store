@@ -14,6 +14,14 @@
     </div>
 </div>
 @else
+@if(session('error_imei'))
+<div class="bs-alert-danger" style="margin-bottom:.75rem">
+    ⚠ {{ session('error_imei') }}
+    <a href="{{ route('equipos') }}" style="color:var(--bs-danger-text);font-weight:600;margin-left:.5rem;text-decoration:underline">
+        Ir a Equipos para agregar el IMEI →
+    </a>
+</div>
+@endif
 <div class="pos-wrap">
 
     {{-- IZQUIERDA --}}
@@ -122,7 +130,7 @@
                 <div style="margin-top:.5rem;display:grid;grid-template-columns:1fr 1fr;gap:.35rem">
                     <input class="bs-input" wire:model="parteMarca"   placeholder="Marca" style="font-size:.75rem;padding:.35rem .6rem"/>
                     <input class="bs-input" wire:model="parteModelo"  placeholder="Modelo" style="font-size:.75rem;padding:.35rem .6rem"/>
-                    <input class="bs-input" wire:model="parteImei"    placeholder="IMEI (opcional)" style="font-size:.75rem;padding:.35rem .6rem"/>
+                    <input class="bs-input" wire:model="parteImei"    placeholder="IMEI * (obligatorio)" style="font-size:.75rem;padding:.35rem .6rem"/>
                     <input class="bs-input" wire:model="parteBateria" placeholder="Batería %" type="number" style="font-size:.75rem;padding:.35rem .6rem"/>
                     <input class="bs-input" wire:model.live="parteCotUsd" placeholder="Cotización USD" type="number" style="font-size:.75rem;padding:.35rem .6rem"/>
                     <div class="bs-input" style="font-size:.75rem;padding:.35rem .6rem;background:#F0F7FF;color:var(--bs-blue);font-weight:600">
