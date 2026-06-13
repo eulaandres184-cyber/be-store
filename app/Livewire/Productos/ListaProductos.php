@@ -7,6 +7,7 @@ use App\Models\Categoria;
 
 class ListaProductos extends Component
 {
+    // Filtros — todos activos simultáneamente
     public string $busqueda        = '';
     public string $categoriaFiltro = '';
     public string $estadoFiltro    = 'activos';
@@ -21,6 +22,15 @@ class ListaProductos extends Component
             $this->ordenarPor = $columna;
             $this->direccion  = 'asc';
         }
+    }
+
+    public function limpiarFiltros(): void
+    {
+        $this->busqueda        = '';
+        $this->categoriaFiltro = '';
+        $this->estadoFiltro    = 'activos';
+        $this->ordenarPor      = 'nombre';
+        $this->direccion       = 'asc';
     }
 
     public function getCategoriasProperty()
@@ -45,15 +55,39 @@ class ListaProductos extends Component
         session()->flash('success', "Producto '{$producto->nombre}' activado.");
     }
 
-    public function render()
+    public function getTotalFiltradoProperty(): int
     {
-        $productos = Producto::where('comercio_id', 1)
-            ->when($this->busqueda,        fn($q) => $q->buscar($this->busqueda))
-            ->when($this->categoriaFiltro, fn($q) => $q->where('categoria_id', $this->categoriaFiltro))
+        return $this->getProductosQuery()->count();
+    }
+
+    private function getProductosQuery()
+    {
+        return Producto::where('comercio_id', 1)
+            // Filtro de texto: busca en nombre, código interno y código de barras
+            ->when($this->busqueda, fn($q) => $q->where(function($q) {
+                $q->where('nombre',         'like', "%{$this->busqueda}%")
+                  ->orWhere('codigo_interno','like', "%{$this->busqueda}%")
+                  ->orWhere('codigo_barras', 'like', "%{$this->busqueda}%");
+            }))
+            // Filtro de categoría
+            ->when($this->categoriaFiltro, fn($q) =>
+                $q->where('categoria_id', $this->categoriaFiltro)
+            )
+            // Filtro de estado — todos los filtros se aplican juntos
             ->when($this->estadoFiltro === 'activos',    fn($q) => $q->where('activo', true))
             ->when($this->estadoFiltro === 'inactivos',  fn($q) => $q->where('activo', false))
-            ->when($this->estadoFiltro === 'bajo_stock', fn($q) => $q->bajoMinimo()->where('activo', true))
-            ->with('categoria')
+            ->when($this->estadoFiltro === 'bajo_stock', fn($q) =>
+                $q->where('activo', true)->whereColumn('stock_actual', '<=', 'stock_minimo')
+            )
+            ->when($this->estadoFiltro === 'sin_stock',  fn($q) =>
+                $q->where('activo', true)->where('stock_actual', 0)
+            )
+            ->with('categoria');
+    }
+
+    public function render()
+    {
+        $productos = $this->getProductosQuery()
             ->orderBy($this->ordenarPor, $this->direccion)
             ->get();
 
