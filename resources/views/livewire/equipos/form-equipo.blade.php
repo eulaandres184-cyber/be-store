@@ -21,41 +21,6 @@
 
 <div class="form-producto">
 
-    {{-- Identificación --}}
-    <div class="form-section">
-        <div class="form-section-title">🔑 Identificación del equipo</div>
-        <div class="bs-form-row">
-            <div class="bs-form-group">
-                <label class="bs-label">
-                    IMEI
-                    <span style="background:#FFF8E6;color:#9A6B00;border:1px solid #F5CBA7;padding:1px 7px;border-radius:20px;font-size:.65rem;margin-left:6px;font-weight:500">
-                        Opcional al cargar · Requerido al vender
-                    </span>
-                </label>
-                <input class="bs-input" wire:model.blur="imei"
-                       placeholder="15 dígitos (podés completarlo después)" 
-                       style="font-family:var(--bs-font-mono)" maxlength="20"/>
-                @error('imei')<span style="font-size:.75rem;color:var(--bs-danger-text)">{{ $message }}</span>@enderror
-                @if(!$imei)
-                <div style="font-size:.7rem;color:#9A6B00;margin-top:.3rem;background:#FFF8E6;padding:.35rem .6rem;border-radius:6px;border:1px solid #F5CBA7">
-                    ⚠ El IMEI será requerido al momento de registrar la venta del equipo.
-                    Marcá *#06# en el celular para obtenerlo.
-                </div>
-                @else
-                <div style="font-size:.7rem;color:var(--bs-success-text);margin-top:.2rem">✅ IMEI registrado</div>
-                @endif
-            </div>
-            <div class="bs-form-group">
-                <label class="bs-label">Estado</label>
-                <select class="bs-select" wire:model="estado">
-                    <option value="disponible">Disponible</option>
-                    <option value="reservado">Reservado</option>
-                    <option value="vendido">Vendido</option>
-                </select>
-            </div>
-        </div>
-    </div>
-
     {{-- Características --}}
     <div class="form-section">
         <div class="form-section-title">📋 Características</div>
@@ -94,6 +59,12 @@
                         <option value="{{ $c }}">{{ $c }}</option>
                     @endforeach
                 </select>
+                @if($color === 'Otro')
+                <input class="bs-input" wire:model.live="colorPersonalizado"
+                       placeholder="Escribí el color..."
+                       style="margin-top:.5rem"
+                       autofocus/>
+                @endif
             </div>
         </div>
         <div class="bs-form-row">
@@ -169,6 +140,41 @@
             <label class="bs-label">Notas / descripción</label>
             <textarea class="bs-input" wire:model="descripcion" rows="2"
                       placeholder="Estado del equipo, accesorios incluidos, observaciones..."></textarea>
+        </div>
+    </div>
+    
+    {{-- Identificación --}}
+    <div class="form-section">
+        <div class="form-section-title">🔑 Identificación del equipo</div>
+        <div class="bs-form-row">
+            <div class="bs-form-group">
+                <label class="bs-label">
+                    IMEI
+                    <span style="background:#FFF8E6;color:#9A6B00;border:1px solid #F5CBA7;padding:1px 7px;border-radius:20px;font-size:.65rem;margin-left:6px;font-weight:500">
+                        Opcional al cargar · Requerido al vender
+                    </span>
+                </label>
+                <input class="bs-input" wire:model.blur="imei"
+                       placeholder="15 dígitos (podés completarlo después)" 
+                       style="font-family:var(--bs-font-mono)" maxlength="20"/>
+                @error('imei')<span style="font-size:.75rem;color:var(--bs-danger-text)">{{ $message }}</span>@enderror
+                @if(!$imei)
+                <div style="font-size:.7rem;color:#9A6B00;margin-top:.3rem;background:#FFF8E6;padding:.35rem .6rem;border-radius:6px;border:1px solid #F5CBA7">
+                    ⚠ El IMEI será requerido al momento de registrar la venta del equipo.
+                    Marcá *#06# en el celular para obtenerlo.
+                </div>
+                @else
+                <div style="font-size:.7rem;color:var(--bs-success-text);margin-top:.2rem">✅ IMEI registrado</div>
+                @endif
+            </div>
+            <div class="bs-form-group">
+                <label class="bs-label">Estado</label>
+                <select class="bs-select" wire:model="estado">
+                    <option value="disponible">Disponible</option>
+                    <option value="reservado">Reservado</option>
+                    <option value="vendido">Vendido</option>
+                </select>
+            </div>
         </div>
     </div>
 

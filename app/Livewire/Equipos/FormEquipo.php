@@ -16,6 +16,7 @@ class FormEquipo extends Component
     public string  $modelo         = '';
     public string  $capacidad_gb   = '';
     public string  $color          = '';
+    public string  $colorPersonalizado = '';
     public string  $condicion      = 'nuevo';
     public string  $precio_usd     = '';
     public string  $bateria_pct    = '';
@@ -88,10 +89,19 @@ class FormEquipo extends Component
         }
     }
 
-    public function updatedMarca()       { $this->autoNombre(); }
-    public function updatedModelo()      { $this->autoNombre(); }
-    public function updatedCapacidadGb() { $this->autoNombre(); }
-    public function updatedColor()       { $this->autoNombre(); }
+    public function updatedMarca()            { $this->autoNombre(); }
+    public function updatedModelo()           { $this->autoNombre(); }
+    public function updatedCapacidadGb()      { $this->autoNombre(); }
+    public function updatedColor()            { $this->colorPersonalizado = ''; $this->autoNombre(); }
+    public function updatedColorPersonalizado(){ $this->autoNombre(); }
+
+    private function colorEfectivo(): ?string
+    {
+        if ($this->color === 'Otro') {
+            return trim($this->colorPersonalizado) ?: null;
+        }
+        return $this->color ?: null;
+    }
 
     private function autoNombre(): void
     {
@@ -100,7 +110,7 @@ class FormEquipo extends Component
                 $this->marca,
                 $this->modelo,
                 $this->capacidad_gb ? $this->capacidad_gb.'GB' : null,
-                $this->color,
+                $this->colorEfectivo(),
             ]);
             $this->nombre_producto = implode(' ', $partes);
         }
@@ -144,7 +154,7 @@ class FormEquipo extends Component
                     'marca'        => $this->marca,
                     'modelo'       => $this->modelo,
                     'capacidad_gb' => $this->capacidad_gb ?: null,
-                    'color'        => $this->color ?: null,
+                    'color'        => $this->colorEfectivo(),
                     'condicion'    => $this->condicion,
                     'precio_usd'   => (float)$this->precio_usd,
                     'bateria_pct'  => $this->bateria_pct ?: null,
@@ -170,7 +180,7 @@ class FormEquipo extends Component
                     'marca'        => $this->marca,
                     'modelo'       => $this->modelo,
                     'capacidad_gb' => $this->capacidad_gb ?: null,
-                    'color'        => $this->color ?: null,
+                    'color'        => $this->colorEfectivo(),
                     'condicion'    => $this->condicion,
                     'precio_usd'   => (float)$this->precio_usd,
                     'bateria_pct'  => $this->bateria_pct ?: null,
