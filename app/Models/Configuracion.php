@@ -13,11 +13,13 @@ class Configuracion extends Model
         'cuotas_4_recargo',
         'cuotas_20_recargo',
         'dolar_blue_hoy',
-        'dolar_actualizado_en'
+        'dolar_actualizado_en',
+        'colores_equipos',
     ];
 
     protected $casts = [
         'dolar_actualizado_en' => 'datetime',
+        'colores_equipos'      => 'array',
     ];
 
     public function comercio()

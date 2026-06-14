@@ -27,8 +27,10 @@ class FormEquipo extends Component
     public string  $codigo_barras   = '';
     public bool    $modoEdicion     = false;
 
+    // Colores base (siempre presentes)
+    protected array $coloresBase = ['Negro','Blanco','Azul','Rojo','Verde','Violeta','Titanio','Natural','Dorado'];
     public array $marcasComunes  = ['iPhone','Samsung','Motorola','Xiaomi','Oppo','Huawei','Otro'];
-    public array $coloresComunes = ['Negro','Blanco','Azul','Rojo','Verde','Violeta','Titanio','Natural','Dorado','Otro'];
+    public array $coloresComunes = [];
 
     protected function rules(): array
     {
@@ -62,6 +64,13 @@ class FormEquipo extends Component
 
     public function mount(?int $id = null): void
     {
+        // Cargar lista de colores: base + personalizados guardados en BD
+        $config = Configuracion::where('comercio_id', 1)->first();
+        $coloresExtra = $config?->colores_equipos ?? [];
+        $this->coloresComunes = array_values(array_unique(
+            array_merge($this->coloresBase, $coloresExtra, ['Otro'])
+        ));
+
         if ($id) {
             $this->modoEdicion = true;
             $this->equipoId    = $id;
@@ -70,7 +79,14 @@ class FormEquipo extends Component
             $this->marca         = $equipo->marca ?? '';
             $this->modelo        = $equipo->modelo ?? '';
             $this->capacidad_gb  = (string)($equipo->capacidad_gb ?? '');
-            $this->color         = $equipo->color ?? '';
+            // Si el color guardado no está en la lista base, mostrarlo como personalizado
+            $colorGuardado = $equipo->color ?? '';
+            if ($colorGuardado && !in_array($colorGuardado, $this->coloresBase) && $colorGuardado !== 'Otro') {
+                $this->color              = 'Otro';
+                $this->colorPersonalizado = $colorGuardado;
+            } else {
+                $this->color = $colorGuardado;
+            }
             $this->condicion     = $equipo->condicion ?? 'nuevo';
             $this->precio_usd    = (string)($equipo->precio_usd ?? '');
             $this->bateria_pct   = (string)($equipo->bateria_pct ?? '');
@@ -189,10 +205,33 @@ class FormEquipo extends Component
             }
         });
 
+        $this->persistirColorPersonalizado();
+
         session()->flash('success', $this->modoEdicion
             ? 'Equipo actualizado.'
             : 'Equipo registrado. Recordá agregar el IMEI antes de venderlo.');
         $this->redirect(route('equipos'));
+    }
+
+    /**
+     * Si se ingresó un color personalizado, guardarlo en la BD
+     * para que aparezca en la lista la próxima vez.
+     */
+    private function persistirColorPersonalizado(): void
+    {
+        $nuevo = trim($this->colorPersonalizado);
+        if ($this->color !== 'Otro' || $nuevo === '') {
+            return;
+        }
+
+        $config = Configuracion::where('comercio_id', 1)->first();
+        if (!$config) return;
+
+        $extras = $config->colores_equipos ?? [];
+        if (!in_array($nuevo, $extras, true) && !in_array($nuevo, $this->coloresBase, true)) {
+            $extras[] = $nuevo;
+            $config->update(['colores_equipos' => $extras]);
+        }
     }
 
     public function render()
